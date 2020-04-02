@@ -19,6 +19,7 @@ If there is really an error, the library will be updated and the student's
 name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);
