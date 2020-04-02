@@ -4,7 +4,7 @@ from timeit import default_timer as timer
 
 ############# Function 1 #############
 
-print("Integrating the first function...")
+print("###Integrating the first function...\n")
 
 phi = (1 + m.sqrt(5)) / 2
 acot = lambda x: m.pi/2 - m.atan(x)
@@ -26,7 +26,7 @@ print("Elapsed time (in us): ",dt)
 
 ############# Function 2 #############
 
-print("Integrating the second function...")
+print("\n###Integrating the second function...\n")
 
 true_res = (m.pi / 8) * m.log(m.pi**2 / 8)
 
@@ -46,7 +46,7 @@ print("Elapsed time (in us): ",dt)
 
 ############# Function 3 #############
 
-print("Integrating the third function...")
+print("\n###Integrating the third function...\n")
 
 true_res = m.pi / 2
 
@@ -62,4 +62,4 @@ end = timer()
 dt = (end - init)*10**6 # in us
 
 print("Result:", result,"\nEst. Error:", error,"\nTrue Error:", result - true_res)
-print("Elapsed time (in us): ",dt)
+print("Elapsed time (in us): ",dt,"\n")
