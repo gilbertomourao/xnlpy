@@ -29,7 +29,9 @@ name will appear in the acknowledgments (README.md).
 #define __INFINITY HUGE_VAL
 #define __NAN (0.0f / 0.0f)
 
-/*MATLAB array functions*/
+/**********************************************
+* MATLAB array functions
+***********************************************/
 
 static double sum(double *vec, int vec_size)
 {
@@ -82,7 +84,9 @@ static void reverse(double *vec, int vec_size)
 	}
 }
 
-/*Legendre points using GLR algorithm*/
+/**********************************************
+* Legendre points using GLR algorithm
+***********************************************/
 
 static void GLR_compute_start(int n, double *p, double *pp)
 {
@@ -609,6 +613,10 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
     return retval;
 }
 
+/**********************************************
+* Top level function
+***********************************************/
+
 static double integral(double (*f)(double), double a, double b, int points, double tolerance, int depth, double *error)
 {
 	/* Error handler */
@@ -641,6 +649,10 @@ static double integral(double (*f)(double), double a, double b, int points, doub
 
 	return xnl_integral(f, a, b, points, tolerance, depth, error);
 }
+
+/**********************************************
+* Python interface
+***********************************************/
 
 /*callback function*/
 
