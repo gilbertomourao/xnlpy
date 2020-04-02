@@ -37,7 +37,7 @@ static struct PyModuleDef xnl_module =
 	xnl_methods
 };
 
-PyMODINIT_FUNC PyInit_calculus(void)
+PyMODINIT_FUNC PyInit_xnlpy(void)
 {
 	return PyModule_Create(&xnl_module);
 }

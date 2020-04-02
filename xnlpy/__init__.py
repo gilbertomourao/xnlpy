@@ -19,4 +19,4 @@ If there is really an error, the library will be updated and the student's
 name will appear in the acknowledgments (README.md).
 """
 
-from .calculus import integral
+from .xnlpy import *
