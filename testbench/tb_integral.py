@@ -36,7 +36,7 @@ b = 1
 func = lambda x: m.atan( (m.atanh(x) - m.atan(x)) / (m.pi + m.atanh(x) - m.atan(x)) ) / x
 
 init = timer()
-result, error = xp.integral(func, a, b, points=15, tolerance=1e-6)
+result, error = xp.integral(func, a, b, points=10, tolerance=1e-15, depth=50)
 end = timer()
 
 dt = (end - init)*10**6 # in us
