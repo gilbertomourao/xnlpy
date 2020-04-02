@@ -6,7 +6,7 @@ XNLPY é um projeto criado por um graduando de Engenharia Elétrica pela Univers
 
 ## Instalação
 
-Em primeiro lugar, você deve clonar este repositório. Na pasta xnlpy, execute o arquivo build.cmd. É interessante observar que ele supõe que você instalou o Python diretamente no disco C (C:/Python). Caso tenha instalado em outro diretório, você pode mudar isso facilmente no arquivo build. Além disso, o compilador utilizado originalmente foi o mingw32. Após a execução, navegue até a pasta site-packages do seu diretório Python e veja se foi criada uma pasta com o nome xnlpy.
+Em primeiro lugar, você deve clonar este repositório. Na pasta xnlpy, execute o arquivo build.cmd. É interessante observar que ele supõe que você instalou o Python (versão 3.8) diretamente no disco C (C:/Python). Caso tenha instalado em outro diretório ou esteja usando outra versão, você pode mudar isso facilmente no arquivo build. Além disso, o compilador utilizado originalmente foi o mingw32. Após a execução, navegue até a pasta site-packages do seu diretório Python e veja se foi criada uma pasta com o nome xnlpy.
 
 ### Teste
 
