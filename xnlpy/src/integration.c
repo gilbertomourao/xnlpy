@@ -714,7 +714,7 @@ PyObject *py_integral(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	/* parse the input tuple with keywords */
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Odd|IdI", kwlist, &int_cb_callable, &a, &b, &points, &tolerance, &remaining_it))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Odd|$IdI", kwlist, &int_cb_callable, &a, &b, &points, &tolerance, &remaining_it))
 	{
 		return NULL;
 	}
