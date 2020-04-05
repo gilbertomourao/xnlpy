@@ -19,6 +19,12 @@ If there is really an error, the library will be updated and the student's
 name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
+#include <sys/time.h> /*struct timeval declaration*/
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+/*Linear Algebra*/
+PyObject *py_zeros(PyObject *, PyObject *);
+
+/*Single Variable Calculus*/
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);

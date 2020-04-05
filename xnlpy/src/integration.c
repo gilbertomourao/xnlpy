@@ -19,15 +19,15 @@ If there is really an error, the library will be updated and the student's
 name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
-#include "calculus.h"
+#include "xnl.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
-#define __INFINITY HUGE_VAL
-#define __NAN (0.0f / 0.0f)
+#define XNL_INFINITY HUGE_VAL
+#define XNL_NAN (0.0f / 0.0f)
 
 /**********************************************
 * MATLAB array functions
@@ -399,15 +399,15 @@ static double GaussLegendre(double (*f)(double), double a, double b, int points,
 * method
 ***********************************************/
 
-static int __isinf(double x)
+static int src_isinf(double x)
 {
-    if (x == __INFINITY || x == -__INFINITY)
+    if (x == XNL_INFINITY || x == -XNL_INFINITY)
         return 1;
     else
         return 0;   
 }
 
-static int __isnan(double x)
+static int src_isnan(double x)
 {
     return x != x;
 }
@@ -429,9 +429,9 @@ static double Adaptive_Quad(double (*f)(double), /* function to integrate */
 	/* Checks if there is remaining iterations */
 	if (!remaining_it)
 	{
-	    *error = __NAN;
+	    *error = XNL_NAN;
 
-	    return __NAN;
+	    return XNL_NAN;
 	}
 
 	left = GaussLegendre(f, a, (a+b)/2, points, roots, weights); /* integrate over the left interval */
@@ -451,10 +451,10 @@ static double Adaptive_Quad(double (*f)(double), /* function to integrate */
 		/* Computes the Left node */
 	    retvalL = Adaptive_Quad(f, a, (a + b)/2, points, left, tolerance, remaining_it - 1, error, roots, weights);
 
-	    if (isnan(retvalL))
+	    if (src_isnan(retvalL))
 	    {
 	        /* Checks if the left node isn't ok */
-	        *error = __NAN;
+	        *error = XNL_NAN;
 	    
 	    	return retvalL;
 	    } 
@@ -526,9 +526,9 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
     /* Makes the subs x = tan(u) to avoid INFINITY intervals
        Remember: tan(+-inf) = +-pi/2
     */   
-    if (__isinf(a) || __isinf(b))
+    if (src_isinf(a) || src_isinf(b))
     {
-        if (__isinf(a))
+        if (src_isinf(a))
         {
             if (a > 0)
             {
@@ -543,7 +543,7 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
             a = atan(a); /* u = atan(x) */
         }
 
-        if (__isinf(b))
+        if (src_isinf(b))
         {
             if (b > 0)
             {
@@ -603,7 +603,7 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
     free(weights);
 
     /* Check if the quadrature worked */
-    if (__isnan(retval))
+    if (src_isnan(retval))
     {
         printf("Numerical integration failed. Possibly because the integral is divergent.\n");
     }

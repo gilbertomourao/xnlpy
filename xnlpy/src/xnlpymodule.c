@@ -19,10 +19,11 @@ If there is really an error, the library will be updated and the student's
 name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
-#include "calculus.h"
+#include "xnl.h"
 
 static PyMethodDef xnl_methods[] = 
 {
+	{"zeros", (PyCFunction) py_zeros, METH_VARARGS, "Zero array creation"},
 	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };

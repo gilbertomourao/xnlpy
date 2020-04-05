@@ -4,7 +4,9 @@ module1 = Extension(
 	'xnlpy', # name
 	# define_macros = [('PY_SSIZE_T_CLEAN', None)],
 	# it's not necessary to put the Python lib here, because it's already on the PATH
-	sources = ['src/integralmodule.c', 'src/xnlpymodule.c']
+	sources = ['src/xnlpymodule.c',
+			   'src/array.c', 
+			   'src/integration.c']
 	)
 
 setup(
