@@ -2,7 +2,7 @@
 XNL: eXtended Numerical Library
 2020, Gilberto Jose Guimaraes de Sousa Mourao
 
-XNL is a library made by some students of UFMA (Universidade Federal do 
+XNL is a library made by some students at UFMA (Universidade Federal do 
 Maranhao) with the purpose of learning some numerical algorithms and 
 share the acquired knowledge with students of the next generations.
 
