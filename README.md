@@ -2,7 +2,7 @@
 
 **Gilberto José Guimarães de Sousa Mourão.**
 
-XNLPY é um projeto criado por um graduando de Engenharia Elétrica pela Universidade Federal do Maranhão. Alguns algoritmos foram baseados no excelente [trabalho de Alex H. Barnett e Jeremy F. Magland](https://github.com/flatironinstitute/finufft).
+XNLPY é um projeto criado por um graduando de Engenharia Elétrica pela Universidade Federal do Maranhão cujo objetivo é facilitar o aprendizado das disciplinas Cálculo Numérico e Métodos Numéricos.
 
 ## Instalação
 
@@ -15,6 +15,12 @@ Crie um arquivo.py ou abra um prompt de comando do Windows e execute o comando *
 ## Colaboração
 
 Apenas estudantes da UFMA serão aceitos como colaboradores. Se um estudante observar um erro ou identificar que XNL possui algum algoritmo incorreto, ele deverá entrar em contato com o criador do repositório que, junto com o estudante, irá avaliar o erro. Em caso de correção, o repositório será atualizado e o nome do estudante aparecerá no tópico **Agradecimentos**.
+
+## Terceiros
+
+Softwares de terceiros foram utilizados como referência para o desenvolvimento de algumas funções presentes em xnlpy. Os autores de tais softwares estão listados abaixo.
+
+Nick Hale, John Burkardt - algoritmo de Glaser-Liu-Rokhlin
 
 ## Agradecimentos
 
