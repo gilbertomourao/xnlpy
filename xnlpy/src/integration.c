@@ -6,7 +6,7 @@ XNL is a library made by some students at UFMA (Universidade Federal do
 Maranhao) with the purpose of learning some numerical algorithms and 
 share the acquired knowledge with students of the next generations.
 
-						About collaboration
+                        About collaboration
 
 Only UFMA students will be accepted as collaborators. This limitation was 
 proposed by the creator of the library to prevent the focus from being 

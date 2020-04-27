@@ -1,6 +1,7 @@
 set python_path=C:\Python\Python38-32\Lib\site-packages
+set build_dir=%CD%
 
-rem running build
+@echo running build
 if exist build (
 	rmdir /q /s build
 )
@@ -14,7 +15,7 @@ if exist xnlpy (
 mkdir xnlpy
 
 rem copying data
-cd C:\Users\chico\AppData\Roaming\Sublime Text 3\Packages\User\Python 3\git_xnlpy\xnlpy\build\lib.win32-3.8
+cd %build_dir%\build\lib.win32-3.8
 copy xnlpy* "%python_path%\xnlpy"
 cd ../..
 copy __init__.py "%python_path%\xnlpy"
