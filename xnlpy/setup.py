@@ -6,6 +6,7 @@ module1 = Extension(
 	# it's not necessary to put the Python lib here, because it's already on the PATH
 	sources = ['src/xnlpymodule.c',
 			   'src/array.c', 
+			   'src/linearAlgebra.c',
 			   'src/integration.c'],   
 	)
 

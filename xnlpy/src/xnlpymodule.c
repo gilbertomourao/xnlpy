@@ -24,6 +24,8 @@ name will appear in the acknowledgments (README.md).
 static PyMethodDef xnl_methods[] = 
 {
 	{"zeros", (PyCFunction) py_zeros, METH_VARARGS, "Zero array creation"},
+	{"ones", (PyCFunction) py_ones, METH_VARARGS, "Unity array creation"},
+	{"eye", (PyCFunction) py_eye, METH_VARARGS, "Identity matrix creation"},
 	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };
@@ -31,7 +33,7 @@ static PyMethodDef xnl_methods[] =
 static struct PyModuleDef xnl_module = 
 {
 	PyModuleDef_HEAD_INIT,
-	"xnlpy", /*name of module*/
+	"xnlpy", /*name of the module*/
 	NULL, /*module documentation*/
 	-1, /*still can't understand this*/
 
@@ -40,5 +42,23 @@ static struct PyModuleDef xnl_module =
 
 PyMODINIT_FUNC PyInit_xnlpy(void)
 {
-	return PyModule_Create(&xnl_module);
+	PyObject *m;
+
+	if (PyType_Ready(&xparrayType) < 0)
+		return NULL;
+
+	m = PyModule_Create(&xnl_module);
+
+	if (m == NULL)
+		return NULL;
+
+	Py_INCREF(&xparrayType);
+	if (PyModule_AddObject(m, "array", (PyObject *) &xparrayType) < 0)
+	{
+		Py_DECREF(&xparrayType);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	return m;
 }

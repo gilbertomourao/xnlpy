@@ -23,100 +23,251 @@ name will appear in the acknowledgments (README.md).
 
 #include <stdlib.h>
 
-static int ParseArguments(unsigned long *arr, Py_ssize_t size, PyObject *args)
+static int numParseArguments(double *array, Py_ssize_t size, PyObject *list)
 {
 	Py_ssize_t i;
-	PyObject *temp_p, *temp_p2;
 
 	for (i = 0; i < size; i++)
 	{
-		temp_p = PyTuple_GetItem(args, i);
-		if (temp_p == NULL)
-			return 0;
-
-		/*Check if temp_p is numeric*/
-		if (PyNumber_Check(temp_p) != 1)
+		PyObject *temp = PyList_GetItem(list, i); /*borrowed reference to returned value*/
+		
+		if (temp == NULL)
 		{
-			PyErr_SetString(PyExc_TypeError, "Non-numeric argument.");
-			return 0;
+			return 1;
 		}
 
-		/*Convert number to python long and then C unsigned long*/
-		temp_p2 = PyNumber_Long(temp_p);
-		arr[i] = PyLong_AsUnsignedLong(temp_p2);
-		Py_DECREF(temp_p2);
-		if (arr[i] <= 0)
+		/*Check if temp is numeric*/
+		if (PyNumber_Check(temp) != 1)
 		{
-			PyErr_SetString(PyExc_TypeError, "Non-positive number doesn't allowed as argument");
-			return 0;
+			return 1;
 		}
 
+		/*Convert temp to a python float*/
+		temp = PyNumber_Float(temp);
+		/*now to C double*/
+		array[i] = PyFloat_AsDouble(temp);
+
+		/*just to guarantee*/
 		if (PyErr_Occurred())
-			return 0;
+			return 1;
 	}
 
-	return 1;
+	return 0;
 }
 
-/*Creates an array with zeros*/
-PyObject *py_zeros(PyObject *self, PyObject *args)
+static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *args)
+{
+	static double **array;
+	Py_ssize_t i;
+	Py_ssize_t cols = 0;
+
+	array = malloc(size * sizeof(double));
+
+	for (i = 0; i < size; i++)
+	{
+		PyObject *temp = PyTuple_GetItem(args, i); /*borrowed reference to returned value*/
+		/*checking if the argument is a list*/
+		if (!PyList_CheckExact(temp))
+		{
+			PyErr_SetString(PyExc_TypeError, "Only list are allowed as arguments.");
+			return NULL;
+		}
+		/*It's a list, then continue*/
+		/*Get the size of the list*/
+		Py_ssize_t list_size = PyList_Size(temp);
+		/*If there's more than one list, check if the other lists have all the same size of the first*/
+		if (i > 0 && list_size != cols)
+		{
+			PyErr_SetString(PyExc_TypeError, "All the lists must have the same size.");
+			return NULL;
+		}
+		cols = list_size;
+		array[i] = malloc(list_size * sizeof(double));
+		/*Now check if it's a list of numbers, not a list of lists or other objects*/
+		if (numParseArguments(array[i], list_size, temp))
+		{
+			PyErr_SetString(PyExc_TypeError, "Only lists of numbers are allowed as arguments.");
+			return NULL;
+		}
+	}
+
+	*ListSize = cols;
+
+	return array;
+}
+
+static int xparray_init(xparrayObject *self, PyObject *args, PyObject *kwds)
 {
 	Py_ssize_t TupleSize = PyTuple_Size(args);
-	Py_ssize_t i;
-	unsigned long *nums;
-	PyObject *main_list;
+	Py_ssize_t *ListSize = malloc(sizeof(ListSize));
 
 	if (!TupleSize)
 	{
-		if (!PyErr_Occurred())
-			PyErr_SetString(PyExc_TypeError, "You must supply at least one argument.");
-		return NULL;
+		PyErr_SetString(PyExc_TypeError, "You must supply at least one argument.");
+		return -1;
 	}
 
-	if (TupleSize > 2)
-	{
-		PyErr_SetString(PyExc_TypeError, "Currently, only 1d and 2d arrays are supported.");
-		return NULL;
-	}
+	self->data = ParseArguments(ListSize, TupleSize, args);
+	if (self->data == NULL)
+		return -1;
 
-	nums = malloc(TupleSize * sizeof(unsigned long));
+	/*Passed*/
+	self->rows = TupleSize;
+	self->cols = *ListSize;
 
-	if(!ParseArguments(nums, TupleSize, args)){
-        /* Make a cleanup and then return null*/
-        return NULL;
-    }
+	free(ListSize);
 
-    /*Valid arguments. Continue...*/
-    main_list = PyList_New(0);
-
-    Py_ssize_t rows = TupleSize > 1 ? nums[0] : TupleSize;
-    unsigned long cols = TupleSize > 1 ? nums[1] : nums[0];
-
-    /*for loop to create the array*/
-    for (i = 0; i < rows; i++)
-    {
-    	PyObject *list = PyList_New(cols);
-    	unsigned long j;
-
-    	for(j = 0; j < cols; j++)
-    	{
-    		PyObject *zero = PyLong_FromLong(0);
-    		if(PyList_SetItem(list, j, zero))
-    		{
-    			PyErr_SetString(PyExc_TypeError, "Failed to create the array.");
-    			return NULL;
-    		}
-    	}
-
-    	if (PyList_Append(main_list, list))
-    	{
-    		PyErr_SetString(PyExc_TypeError, "Failed to create the array.");
-    		return NULL;
-    	}
-    }
-
-    /*free memory*/
-    free(nums);
-
-    return main_list;
+	return 0;
 }
+
+static PyObject *xparray_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+	/*Will automatically call the init function*/
+	xparrayObject *self;
+	
+	self = (xparrayObject *) type->tp_alloc(type, 0);
+
+	if (self != NULL)
+	{
+		self->data = NULL;
+		self->rows = 0;
+		self->cols = 0;
+	}
+
+	return (PyObject *) self;
+}
+
+static void destroy(double **data, int rows, int cols)
+{
+	int i;
+
+	for (i = 0; i < rows; i++)
+	{
+		free(data[i]);
+	}
+
+	free(data);
+}
+
+static void xparray_dealloc(xparrayObject *self)
+{
+	destroy(self->data, self->rows, self->cols);
+	Py_TYPE(self)->tp_free((PyObject *) self); /*to free the object's memory*/
+}
+
+static PyMemberDef xparray_members[] = 
+{
+	/*{name, type, offset, flag, doc},*/
+	{"rows", T_INT, offsetof(xparrayObject, rows), READONLY, "array rows"},
+	{"cols", T_INT, offsetof(xparrayObject, cols), READONLY, "array columns"},
+	{NULL} /*Sentinel*/
+};
+
+static PyObject *xparray_read(xparrayObject *self, PyObject *args)
+{
+	int i = 0, j = 0;
+	double value;
+	PyObject *retval;
+
+	if (!PyArg_ParseTuple(args, "ii", &i, &j))
+	{
+		return NULL;
+	}
+
+	if (i < 0 || j < 0 || i > self->rows - 1 || j > self->cols - 1)
+	{
+		PyErr_SetString(PyExc_TypeError, "Invalid indices.");
+		return NULL;
+	}
+
+	value = self->data[i][j];
+	retval = Py_BuildValue("d", value);
+
+	return retval;
+}
+
+static PyObject *xparray_write(xparrayObject *self, PyObject *args)
+{
+	int i, j;
+	double value;
+	int success = 1;
+	PyObject *retval;
+
+	if (!PyArg_ParseTuple(args, "iid", &i, &j, &value))
+	{
+		return NULL;
+	}
+
+	if (i < 0 || j < 0 || i > self->rows - 1 || j > self->cols - 1)
+	{
+		PyErr_SetString(PyExc_TypeError, "Invalid indices.");
+		return NULL;
+	}
+
+	self->data[i][j] = value;
+	retval = Py_BuildValue("i", success);
+
+	return retval;
+}
+
+static PyObject *xparray_print(xparrayObject *self, PyObject *args)
+{
+	int i = 0, j = 0, precision = 1;
+	int success = 1;
+	PyObject *retval;
+
+	if (!PyArg_ParseTuple(args,"i",&precision))
+	{
+		return NULL;
+	}
+
+	if (precision < 0)
+	{
+		PyErr_SetString(PyExc_TypeError, "Precision must be a positive integer.");
+		return NULL;
+	}
+
+	/*Print the array*/
+	printf("array(");
+	for (i = 0; i < self->rows; i++)
+	{
+		if (i) printf("%*s",6,"");
+		printf("[");
+		for (j = 0; j < self->cols; j++)
+		{
+			printf("%.*f, ", precision, self->data[i][j]);
+		}
+		printf("\b\b],");
+		if (i < self->rows - 1)
+			putchar('\n');
+	}
+	printf("\b)\n");
+
+	retval = Py_BuildValue("i", success);
+
+	return retval;
+}
+
+static PyMethodDef xparray_methods[] = 
+{
+	{"read", (PyCFunction) xparray_read, METH_VARARGS, "Return the element at (row, column)"},
+	{"write", (PyCFunction) xparray_write, METH_VARARGS, "Set the element at (row, column)"},
+	{"print", (PyCFunction) xparray_print, METH_VARARGS, "Print the array"},
+	{NULL} /*Sentinel*/
+};
+
+PyTypeObject xparrayType = 
+{
+	PyVarObject_HEAD_INIT(NULL, 0) /*initialize ob_base*/
+	.tp_name = "xnlpy.array", /*module.name is compatible with pydoc and pickle*/
+	.tp_doc = "Array object used in xnlpy",
+	.tp_basicsize = sizeof(xparrayObject),
+	.tp_itemsize = 0, /*non zero only when dealing with objects with variable size*/
+	.tp_flags = Py_TPFLAGS_DEFAULT, 
+	.tp_new = xparray_new, /*enable object creation*/
+	.tp_init = (initproc) xparray_init,
+	.tp_new = xparray_new,
+	.tp_dealloc = (destructor) xparray_dealloc,
+	.tp_members = xparray_members,
+	.tp_methods = xparray_methods,
+};

@@ -22,9 +22,23 @@ name will appear in the acknowledgments (README.md).
 #include <sys/time.h> /*struct timeval declaration*/
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <structmember.h>
+
+/* Array type */
+typedef struct 
+{
+	PyObject_HEAD /*declares ob_base of type PyObject*/
+	double **data; /* pointer to the C array */
+	int rows;
+	int cols;
+} xparrayObject;
+
+PyTypeObject xparrayType;
 
 /*Linear Algebra*/
-PyObject *py_zeros(PyObject *, PyObject *);
+xparrayObject *py_zeros(PyObject *, PyObject *);
+xparrayObject *py_ones(PyObject *, PyObject *);
+xparrayObject *py_eye(PyObject *, PyObject *);
 
 /*Single Variable Calculus*/
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);
