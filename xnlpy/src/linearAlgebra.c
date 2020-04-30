@@ -47,13 +47,13 @@ xparrayObject *py_zeros(PyObject *self, PyObject *args)
 		{
 			PyObject *zero = PyLong_FromLong(0);
 
-			if (PyList_SetItem(temp, j, zero) == -1) /*steals reference of zero*/
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
 			{
 				return NULL;
 			}
 		}
 
-		PyTuple_SetItem(argList, i, temp); /*steals reference of temp*/
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
 	}
 
 	/*call the array object*/
@@ -98,13 +98,13 @@ xparrayObject *py_ones(PyObject *self, PyObject *args)
 		{
 			PyObject *zero = PyLong_FromLong(0);
 
-			if (PyList_SetItem(temp, j, zero) == -1) /*steals reference of zero*/
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
 			{
 				return NULL;
 			}
 		}
 
-		PyTuple_SetItem(argList, i, temp); /*steals reference of temp*/
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
 	}
 
 	/*call the array object*/
@@ -157,13 +157,13 @@ xparrayObject *py_eye(PyObject *self, PyObject *args)
 		{
 			PyObject *zero = PyLong_FromLong(0);
 
-			if (PyList_SetItem(temp, j, zero) == -1) /*steals reference of zero*/
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
 			{
 				return NULL;
 			}
 		}
 
-		PyTuple_SetItem(argList, i, temp); /*steals reference of temp*/
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
 	}
 
 	/*call the array object*/

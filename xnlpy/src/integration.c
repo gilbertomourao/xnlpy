@@ -672,7 +672,7 @@ static double int_callback(double callback)
 	PyObject *value = Py_BuildValue("d", callback);
 	PyObject *arglist = PyTuple_New(1);
 
-	PyTuple_SetItem(arglist, 0, value);
+	PyTuple_SetItem(arglist, 0, value); /*steals the reference of value*/
 
 	/*call the python function/object saved below*/
 	retval = PyObject_CallObject(int_cb_callable, arglist);
@@ -732,8 +732,8 @@ PyObject *py_integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	ret_integral = Py_BuildValue("d", result);
 	ret_error = Py_BuildValue("d", error);
 
-	PyTuple_SetItem(ret_tuple, 0, ret_integral);
-	PyTuple_SetItem(ret_tuple, 1, ret_error);
+	PyTuple_SetItem(ret_tuple, 0, ret_integral); /*steals the reference of ret_integral*/
+	PyTuple_SetItem(ret_tuple, 1, ret_error); /*steals the reference of ret_error*/
 
 	return ret_tuple;
 }
