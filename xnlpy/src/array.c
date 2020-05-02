@@ -252,11 +252,311 @@ static PyObject *xparray_print(xparrayObject *self, PyObject *args)
 	return retval;
 }
 
+xparrayObject *py_dot(xparrayObject *self, PyObject *args)
+{
+	PyObject *array_arg = NULL;
+	double scalar;
+
+	if (!PyArg_ParseTuple(args, "O", &array_arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(array_arg);
+
+	if (PyXParray_Check(array_arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "The argument's type must be xnlpy.array or numeric.");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		array_arg = PyNumber_Float(array_arg);
+		scalar = PyFloat_AsDouble(array_arg);
+
+		/*Now create the array ([scalar])*/
+		PyObject *argList = PyTuple_New(1);
+		PyObject *temp = PyList_New(1);
+		PyObject *py_scalar = PyFloat_FromDouble(scalar);
+
+		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
+		{
+			return NULL;
+		}
+
+		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
+
+		array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+	}
+	else 
+	{
+		array = (xparrayObject *)array_arg;
+
+		/*Check if the multiplication can be done*/
+		if (self->cols != array->rows)
+		{
+			PyErr_SetString(PyExc_TypeError, "The number of columns of A must be equal to the number of rows of B.");
+			return NULL;
+		}
+	}
+
+	/*Passed, initialize a new array with zeros*/
+	PyObject *argList = PyTuple_New(self->rows);
+
+	int i, j;
+	int cols = (scalar_flag == 1) ? self->cols : array->cols;
+
+	for (i = 0; i < self->rows; i++)
+	{
+		PyObject *temp = PyList_New(cols);
+
+		for (j = 0; j < cols; j++)
+		{
+			PyObject *zero = PyLong_FromLong(0);
+
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
+			{
+				return NULL;
+			}
+		}
+
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (ret_array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	/*Success on the creation, then do the multiplication*/
+	int k;
+
+	for (i = 0; i < self->rows; i++)
+	{
+		for (j = 0; j < cols; j++)
+		{
+			for (k = 0; k < array->rows; k++)
+			{
+				ret_array->data[i][j] += self->data[i][k + j*scalar_flag] * array->data[k][j*(1 - scalar_flag)];
+			}
+		}
+	}
+
+	return ret_array;
+}
+
+xparrayObject *py_plus(xparrayObject *self, PyObject *args)
+{
+	PyObject *array_arg = NULL;
+	double scalar;
+
+	if (!PyArg_ParseTuple(args, "O", &array_arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(array_arg);
+
+	if (PyXParray_Check(array_arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "The argument's type must be xnlpy.array or numeric.");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		array_arg = PyNumber_Float(array_arg);
+		scalar = PyFloat_AsDouble(array_arg);
+
+		/*Now create the array ([scalar])*/
+		PyObject *argList = PyTuple_New(1);
+		PyObject *temp = PyList_New(1);
+		PyObject *py_scalar = PyFloat_FromDouble(scalar);
+
+		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
+		{
+			return NULL;
+		}
+
+		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
+
+		array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+	}
+	else 
+	{
+		/*Passed*/
+		array = (xparrayObject *)array_arg;
+
+		/*Check if the multiplication can be done*/
+		if ((self->rows != array->rows) || (self->cols != array->cols))
+		{
+			PyErr_SetString(PyExc_TypeError, "Both arguments must have the same size.");
+			return NULL;
+		}
+	}
+
+	/*Passed, initialize a new array with zeros*/
+	PyObject *argList = PyTuple_New(self->rows);
+
+	int i, j;
+	for (i = 0; i < self->rows; i++)
+	{
+		PyObject *temp = PyList_New(self->cols);
+
+		for (j = 0; j < self->cols; j++)
+		{
+			PyObject *zero = PyLong_FromLong(0);
+
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
+			{
+				return NULL;
+			}
+		}
+
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (ret_array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	/*Success on the creation, then do the addition*/
+	for (i = 0; i < ret_array->rows; i++)
+	{
+		for (j = 0; j < ret_array->cols; j++)
+		{
+			ret_array->data[i][j] = self->data[i][j] + array->data[i*(1 - scalar_flag)][j*(1 - scalar_flag)];
+		}
+	}
+
+	return ret_array;
+}
+
+xparrayObject *py_minus(xparrayObject *self, PyObject *args)
+{
+	PyObject *array_arg = NULL;
+	double scalar;
+
+	if (!PyArg_ParseTuple(args, "O", &array_arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(array_arg);
+
+	if (PyXParray_Check(array_arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "The argument's type must be xnlpy.array or numeric.");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		array_arg = PyNumber_Float(array_arg);
+		scalar = PyFloat_AsDouble(array_arg);
+
+		/*Now create the array ([scalar])*/
+		PyObject *argList = PyTuple_New(1);
+		PyObject *temp = PyList_New(1);
+		PyObject *py_scalar = PyFloat_FromDouble(scalar);
+
+		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
+		{
+			return NULL;
+		}
+
+		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
+
+		array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+	}
+	else 
+	{
+		/*Passed*/
+		array = (xparrayObject *)array_arg;
+
+		/*Check if the multiplication can be done*/
+		if ((self->rows != array->rows) || (self->cols != array->cols))
+		{
+			PyErr_SetString(PyExc_TypeError, "Both arguments must have the same size.");
+			return NULL;
+		}
+	}
+
+	/*Passed, initialize a new array with zeros*/
+	PyObject *argList = PyTuple_New(self->rows);
+
+	int i, j;
+	for (i = 0; i < self->rows; i++)
+	{
+		PyObject *temp = PyList_New(self->cols);
+
+		for (j = 0; j < self->cols; j++)
+		{
+			PyObject *zero = PyLong_FromLong(0);
+
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
+			{
+				return NULL;
+			}
+		}
+
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (ret_array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	/*Success on the creation, then do the addition*/
+	for (i = 0; i < ret_array->rows; i++)
+	{
+		for (j = 0; j < ret_array->cols; j++)
+		{
+			ret_array->data[i][j] = self->data[i][j] - array->data[i*(1 - scalar_flag)][j*(1 - scalar_flag)];
+		}
+	}
+
+	return ret_array;
+}
+
 static PyMethodDef xparray_methods[] = 
 {
 	{"read", (PyCFunction) xparray_read, METH_VARARGS, "Return the element at (row, column)"},
 	{"write", (PyCFunction) xparray_write, METH_VARARGS, "Set the element at (row, column)"},
 	{"print", (PyCFunction) xparray_print, METH_VARARGS, "Print the array"},
+	{"dot", (PyCFunction) py_dot, METH_VARARGS, "Array multiplication"},
+	{"plus", (PyCFunction) py_plus, METH_VARARGS, "Array addition"},
+	{"minus", (PyCFunction) py_minus, METH_VARARGS, "Array subtraction"},
 	{NULL} /*Sentinel*/
 };
 

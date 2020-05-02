@@ -32,10 +32,7 @@ name will appear in the acknowledgments (README.md).
 xparrayObject *py_zeros(PyObject *, PyObject *);
 xparrayObject *py_ones(PyObject *, PyObject *);
 xparrayObject *py_eye(PyObject *, PyObject *);
-xparrayObject *py_mult(PyObject *, PyObject *);
 xparrayObject *py_transpose(PyObject *, PyObject *);
-xparrayObject *py_add(PyObject *, PyObject *);
-xparrayObject *py_sub(PyObject *, PyObject *);
 
 /*Single Variable Calculus*/
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);

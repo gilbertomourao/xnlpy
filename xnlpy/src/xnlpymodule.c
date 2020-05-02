@@ -26,10 +26,7 @@ static PyMethodDef xnl_methods[] =
 	{"zeros", (PyCFunction) py_zeros, METH_VARARGS, "Zero array creation"},
 	{"ones", (PyCFunction) py_ones, METH_VARARGS, "Unity array creation"},
 	{"eye", (PyCFunction) py_eye, METH_VARARGS, "Identity matrix creation"},
-	{"mult", (PyCFunction) py_mult, METH_VARARGS, "Array multiplication"},
 	{"transpose", (PyCFunction) py_transpose, METH_VARARGS, "Array transpose"},
-	{"add", (PyCFunction) py_add, METH_VARARGS, "Array addition"},
-	{"sub", (PyCFunction) py_sub, METH_VARARGS, "Array subtraction"},
 	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };
