@@ -62,6 +62,8 @@ static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *
 	Py_ssize_t cols = 0;
 
 	array = malloc(size * sizeof(double));
+	/*check the success of malloc call*/
+	if (array == NULL) return NULL;
 
 	for (i = 0; i < size; i++)
 	{
@@ -83,6 +85,8 @@ static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *
 		}
 		cols = list_size;
 		array[i] = malloc(list_size * sizeof(double));
+		/*check the success of malloc call*/
+		if (array[i] == NULL) return NULL;
 		/*Now check if it's a list of numbers, not a list of lists or other objects*/
 		if (numParseArguments(array[i], list_size, temp))
 		{
@@ -137,21 +141,21 @@ static PyObject *xparray_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	return (PyObject *) self;
 }
 
-static void destroy(double **data, int rows, int cols)
+static void destroy(xparrayObject *self)
 {
 	int i;
 
-	for (i = 0; i < rows; i++)
+	for (i = 0; i < self->rows; i++)
 	{
-		free(data[i]);
+		free(self->data[i]);
 	}
 
-	free(data);
+	free(self->data);
 }
 
 static void xparray_dealloc(xparrayObject *self)
 {
-	destroy(self->data, self->rows, self->cols);
+	destroy(self);
 	Py_TYPE(self)->tp_free((PyObject *) self); /*to free the object's memory*/
 }
 

@@ -20,24 +20,26 @@ name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
 #ifndef XNLPY_H
-#define XNLPY_H
+	#error "array.h isn't intended to be included directly. Include xnl.h instead."
+#endif
 
-#include <sys/time.h> /*struct timeval declaration*/
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
+#ifndef ARRAY_H
+#define ARRAY_H
 
-/*Linear Algebra*/
-#include "array.h"
+#include <structmember.h>
+#include <string.h>
 
-xparrayObject *py_zeros(PyObject *, PyObject *);
-xparrayObject *py_ones(PyObject *, PyObject *);
-xparrayObject *py_eye(PyObject *, PyObject *);
-xparrayObject *py_mult(PyObject *, PyObject *);
-xparrayObject *py_transpose(PyObject *, PyObject *);
-xparrayObject *py_add(PyObject *, PyObject *);
-xparrayObject *py_sub(PyObject *, PyObject *);
+/* Array type */
+typedef struct 
+{
+	PyObject_HEAD /*declares ob_base of type PyObject*/
+	double **data; /* pointer to the C array */
+	int rows;
+	int cols;
+} xparrayObject;
 
-/*Single Variable Calculus*/
-PyObject *py_integral(PyObject *, PyObject *, PyObject *);
+PyTypeObject xparrayType;
 
-#endif /*XNLPY_H*/
+#define PyXParray_Check(obj) (strcmp(obj->ob_type->tp_name, "xnlpy.array"))
+
+#endif /*ARRAY_H*/
