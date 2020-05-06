@@ -27,6 +27,7 @@ static PyMethodDef xnl_methods[] =
 	{"ones", (PyCFunction) py_ones, METH_VARARGS, "Unity array creation"},
 	{"eye", (PyCFunction) py_eye, METH_VARARGS, "Identity matrix creation"},
 	{"transpose", (PyCFunction) py_transpose, METH_VARARGS, "Array transpose"},
+	{"diff", (PyCFunction) py_diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
 	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };

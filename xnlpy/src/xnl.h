@@ -35,6 +35,7 @@ xparrayObject *py_eye(PyObject *, PyObject *);
 xparrayObject *py_transpose(PyObject *, PyObject *);
 
 /*Single Variable Calculus*/
+PyObject *py_diff(PyObject *, PyObject *, PyObject *);
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);
 
 #endif /*XNLPY_H*/

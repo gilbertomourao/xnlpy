@@ -194,8 +194,6 @@ static PyObject *xparray_write(xparrayObject *self, PyObject *args)
 {
 	int i, j;
 	double value;
-	int success = 1;
-	PyObject *retval;
 
 	if (!PyArg_ParseTuple(args, "iid", &i, &j, &value))
 	{
@@ -209,16 +207,13 @@ static PyObject *xparray_write(xparrayObject *self, PyObject *args)
 	}
 
 	self->data[i][j] = value;
-	retval = Py_BuildValue("i", success);
 
-	return retval;
+	return Py_BuildValue("");
 }
 
 static PyObject *xparray_print(xparrayObject *self, PyObject *args)
 {
 	int i = 0, j = 0, precision = 1;
-	int success = 1;
-	PyObject *retval;
 
 	if (!PyArg_ParseTuple(args,"i",&precision))
 	{
@@ -247,9 +242,7 @@ static PyObject *xparray_print(xparrayObject *self, PyObject *args)
 	}
 	printf("\b)\n");
 
-	retval = Py_BuildValue("i", success);
-
-	return retval;
+	return Py_BuildValue("");
 }
 
 xparrayObject *py_dot(xparrayObject *self, PyObject *args)
