@@ -1,7 +1,11 @@
 @echo off
 
-set python_path=C:\Python\Python38-32\Lib\site-packages
 set build_dir=%CD%
+
+rem finding python
+for /f "tokens=*" %%a in ('python -c "import sys, os; print(os.path.dirname(sys.executable))"') do (
+	set python_path="%%a\Lib\site-packages"
+)
 
 rem running build
 if exist build (

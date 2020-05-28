@@ -28,7 +28,7 @@ name will appear in the acknowledgments (README.md).
  *
  * Evaluate the first derivative of the function at x
  */
-static double diff(double (*f)(double), double x, double h, int iterations)
+static double xnl_diff(double (*f)(double), double x, double h, int iterations)
 {
 	int i, j;
 	double retval;
@@ -62,6 +62,19 @@ static double diff(double (*f)(double), double x, double h, int iterations)
 	free(Rdiff);
 
 	return retval;
+}
+
+/*Top level function*/
+static double diff(double (*f)(double), double x, double h, int iterations)
+{
+	/*Check if the input iterations is correct*/
+	if (iterations <= 0)
+	{
+		printf("The number of iterations must be positive.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return xnl_diff(f, x, h, iterations);
 }
 
 /**********************************************
