@@ -103,7 +103,7 @@ static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *
 static int xparray_init(xparrayObject *self, PyObject *args, PyObject *kwds)
 {
 	Py_ssize_t TupleSize = PyTuple_Size(args);
-	Py_ssize_t *ListSize = malloc(sizeof(ListSize));
+	Py_ssize_t ListSize;
 
 	if (!TupleSize)
 	{
@@ -111,15 +111,13 @@ static int xparray_init(xparrayObject *self, PyObject *args, PyObject *kwds)
 		return -1;
 	}
 
-	self->data = ParseArguments(ListSize, TupleSize, args);
+	self->data = ParseArguments(&ListSize, TupleSize, args);
 	if (self->data == NULL)
 		return -1;
 
 	/*Passed*/
 	self->rows = TupleSize;
-	self->cols = *ListSize;
-
-	free(ListSize);
+	self->cols = ListSize;
 
 	return 0;
 }
