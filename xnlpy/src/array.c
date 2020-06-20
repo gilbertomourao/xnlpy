@@ -61,7 +61,7 @@ static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *
 	Py_ssize_t i;
 	Py_ssize_t cols = 0;
 
-	array = malloc(size * sizeof(double));
+	array = malloc(size * sizeof(double *));
 	/*check the success of malloc call*/
 	if (array == NULL) return NULL;
 
