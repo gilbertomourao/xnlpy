@@ -34,10 +34,23 @@ static double xnl_diff(double (*f)(double), double x, double h, int iterations)
 	double retval;
 	double **Rdiff = malloc(iterations * sizeof(double));
 
+	/*Check if malloc worked*/
+	if (Rdiff == NULL)
+	{
+		printf("ERROR: In xnl_diff. Memory allocation failed! Check variable Rdiff.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	/*Initialize Richardson matrix*/
 	for (i = 0; i < iterations; i++)
 	{
 		Rdiff[i] = malloc(iterations * sizeof(double));
+		/*Check if malloc worked*/
+		if (Rdiff[i] == NULL)
+		{
+			printf("ERROR: In xnl_diff. Memory allocation failed! Check variable Rdiff[%d].\n", i);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/*Richardson Extrapolation*/
@@ -81,11 +94,11 @@ static double diff(double (*f)(double), double x, double h, int iterations)
 * Python interface
 ***********************************************/
 
-static PyObject *int_cb_callable;
+static PyObject *diff_cb_callable;
 
 /*Implementation of double (*func)(double)*/
 
-static double int_callback(double callback)
+static double diff_callback(double callback)
 {
 	PyObject *retval;
 	double result; /*returned value*/
@@ -96,7 +109,7 @@ static double int_callback(double callback)
 	PyTuple_SetItem(arglist, 0, value); /*steals the reference of value*/
 
 	/*call the python function/object saved below*/
-	retval = PyObject_CallObject(int_cb_callable, arglist);
+	retval = PyObject_CallObject(diff_cb_callable, arglist);
 
 	/*convert the returned object to a double, if possible*/
 	if (retval && PyFloat_Check(retval))
@@ -129,20 +142,20 @@ PyObject *py_diff(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	/* parse the input tuple with keywords */
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Od|$dI", kwlist, &int_cb_callable, &x, &h, &iterations))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Od|$dI", kwlist, &diff_cb_callable, &x, &h, &iterations))
 	{
 		return NULL;
 	}
 
 	/* ensure the first parameter is a callable */
-	if (!PyCallable_Check(int_cb_callable))
+	if (!PyCallable_Check(diff_cb_callable))
 	{
 		PyErr_SetString(PyExc_TypeError, "diff: a callable is required\n");
 		return NULL;
 	}
 
 	/* Call the diff function */
-	result = diff(int_callback,x,h,iterations);
+	result = diff(diff_callback,x,h,iterations);
 
 	return Py_BuildValue("d", result);
 }

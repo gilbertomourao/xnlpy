@@ -20,3 +20,11 @@ name will appear in the acknowledgments (README.md).
 """
 
 from .xnlpy import *
+
+__author__ = "Gilberto Jose Guimaraes de Sousa Mourao"
+__credits__ = ["Gilberto Jose Guimaraes de Sousa Mourao"]
+
+__version__ = "demo"
+__maintainer__ = "Gilberto Jose Guimaraes de Sousa Mourao"
+__email__ = "gilberto.mourao@discente.ufma.br"
+__status__ = "Production"

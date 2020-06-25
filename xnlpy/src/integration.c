@@ -136,6 +136,25 @@ static void GLR_compute_first_root(double *p, double *roots, double *weights, in
 	double *up = malloc((m+1) * sizeof(double));
 	double *x1k = malloc((m+1) * sizeof(double));
 
+	/*Check if malloc worked*/
+	if (u == NULL)
+	{
+		printf("ERROR: In GLR_compute_first_root. Memory allocation failed! Check variable u.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (up == NULL)
+	{
+		printf("ERROR: In GLR_compute_first_root. Memory allocation failed! Check variable up.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (x1k == NULL)
+	{
+		printf("ERROR: In GLR_compute_first_root. Memory allocation failed! Check variable x1k.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	/*Initialize u and up with 0 and xk with 1*/
 
 	for (k = 0;k < m + 1;k++)
@@ -203,6 +222,25 @@ static void GLR_compute_all(double *roots, double *weights, int n)
 	double *u = malloc((m + 1) * sizeof(double));
 	double *up = malloc((m + 1) * sizeof(double));
 	double *hh = malloc((m + 1) * sizeof(double));
+
+	/*Check if malloc worked*/
+	if (u == NULL)
+	{
+		printf("ERROR: In GLR_compute_all. Memory allocation failed! Check variable u.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (up == NULL)
+	{
+		printf("ERROR: In GLR_compute_all. Memory allocation failed! Check variable up.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (hh == NULL)
+	{
+		printf("ERROR: In GLR_compute_all. Memory allocation failed! Check variable hh.\n");
+		exit(EXIT_FAILURE);
+	}
 
 	double xp;
 	double h;
@@ -517,6 +555,19 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
     double *roots = malloc(points * sizeof(double));
     double *weights = malloc(points * sizeof(double));
 
+	/*Check if malloc worked*/
+	if (roots == NULL)
+	{
+		printf("ERROR: In xnl_integral. Memory allocation failed! Check variable roots.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (weights == NULL)
+	{
+		printf("ERROR: In xnl_integral. Memory allocation failed! Check variable weights.\n");
+		exit(EXIT_FAILURE);
+	}
+
     double total, left, right;
 
     /* Initialize roots and weights */
@@ -625,19 +676,19 @@ static double integral(double (*f)(double), double a, double b, int points, doub
 
 	if (points <= 0)
 	{
-		strcat(error_msg,"The number of points must be a natural number.\n");
+		strcat(error_msg,"ERROR: In integral. The number of points must be a natural number.\n");
 		error_flag = 1;
 	}
 
 	if (tolerance < 0)
 	{
-		strcat(error_msg,"The tolerance can't be a negative number.\n");
+		strcat(error_msg,"ERROR: In integral. The tolerance can't be a negative number.\n");
 		error_flag = 1;
 	}
 
 	if (depth <= 0)
 	{
-		strcat(error_msg,"The depth must be a positive integer.\n");
+		strcat(error_msg,"ERROR: In integral. The depth must be a positive integer.\n");
 		error_flag = 1;
 	}
 
