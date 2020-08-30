@@ -1,5 +1,5 @@
 import xnlpy as xp
-from timeit import default_timer as timer
+#from timeit import default_timer as timer
 
 A = xp.array([1, 2, 3], [4, 5, 6])
 

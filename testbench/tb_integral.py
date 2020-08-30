@@ -1,6 +1,6 @@
 import xnlpy as xp
 import math as m
-from timeit import default_timer as timer
+#from timeit import default_timer as timer
 #import statistics
 import matplotlib.pyplot as plt
 
