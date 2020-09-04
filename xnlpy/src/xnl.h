@@ -33,6 +33,7 @@ xparrayObject *py_zeros(PyObject *, PyObject *);
 xparrayObject *py_ones(PyObject *, PyObject *);
 xparrayObject *py_eye(PyObject *, PyObject *);
 xparrayObject *py_transpose(PyObject *, PyObject *);
+xparrayObject *py_GaussElimination(PyObject *, PyObject *, PyObject *);
 
 /*Single Variable Calculus*/
 PyObject *py_diff(PyObject *, PyObject *, PyObject *);

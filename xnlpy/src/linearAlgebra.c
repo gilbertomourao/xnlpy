@@ -201,7 +201,7 @@ xparrayObject *py_transpose(PyObject *self, PyObject *args)
 
 	if (PyXParray_Check(arg_A))
 	{
-		PyErr_SetString(PyExc_TypeError, "The argument type must be xnlpy.array.");
+		PyErr_SetString(PyExc_TypeError, "The argument's type must be xnlpy.array.");
 		return NULL;
 	}
 
