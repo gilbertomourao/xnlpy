@@ -28,6 +28,7 @@ static PyMethodDef xnl_methods[] =
 	{"eye", (PyCFunction) py_eye, METH_VARARGS, "Identity matrix creation"},
 	{"transpose", (PyCFunction) py_transpose, METH_VARARGS, "Array transpose"},
 	{"GaussElimination", (PyCFunction) py_GaussElimination, METH_VARARGS | METH_KEYWORDS, "Gauss Elimination"},
+	{"fsolve", (PyCFunction) py_fsolve, METH_VARARGS | METH_KEYWORDS, "Numerical root finder for nonlinear function"},
 	{"diff", (PyCFunction) py_diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
 	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/

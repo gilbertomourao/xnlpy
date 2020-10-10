@@ -35,6 +35,9 @@ xparrayObject *py_eye(PyObject *, PyObject *);
 xparrayObject *py_transpose(PyObject *, PyObject *);
 xparrayObject *py_GaussElimination(PyObject *, PyObject *, PyObject *);
 
+/*Nonlinear equations*/
+PyObject *py_fsolve(PyObject *, PyObject *, PyObject *);
+
 /*Single Variable Calculus*/
 PyObject *py_diff(PyObject *, PyObject *, PyObject *);
 PyObject *py_integral(PyObject *, PyObject *, PyObject *);

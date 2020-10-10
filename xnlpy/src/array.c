@@ -71,7 +71,7 @@ static double **ParseArguments(Py_ssize_t *ListSize, Py_ssize_t size, PyObject *
 		/*checking if the argument is a list*/
 		if (!PyList_CheckExact(temp))
 		{
-			PyErr_SetString(PyExc_TypeError, "Only list are allowed as arguments.");
+			PyErr_SetString(PyExc_TypeError, "Only lists are allowed as arguments.");
 			return NULL;
 		}
 		/*It's a list, then continue*/
