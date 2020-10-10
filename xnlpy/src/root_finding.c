@@ -27,34 +27,120 @@ name will appear in the acknowledgments (README.md).
 #define NO_DOUBLE_ARG 0.0f / 0.0f
 
 /**
- * Secant Method
+ * Brent's Method
  *
  * 
  */
-static double secant_method(double (*f)(double), double x0, double x1, double tolerance, int max_iter)
+static double brent_method(double (*f)(double), double x0, double x1, double tolerance, int max_iter)
 {
 	if (x0 != x0 || x1 != x1)
 	{
-		printf("ERROR: In secant_method. No argument passed to x0 or x1. You must pass arguments for both x0 and x1.\n");
+		printf("ERROR: In brent_method. No argument passed to x0 or x1. You must pass arguments for both x0 and x1.\n");
 		return NO_DOUBLE_ARG;
 	}
 
-	double x2;
-	int counter = 0;
+	int counter;
 
-	do {
-		x2 = x1 - f(x1) * (x1 - x0) / (f(x1) - f(x0));
-		x0 = x1;
-		x1 = x2;
-		++counter;
-	} while (fabs(x1 - x0) >= tolerance && counter < max_iter);
+	double a = x0;
+	double b = x1;
+	double fa = f(a);
+	double fb = f(b);
+	double fs = 0; /* initialize */
 
-	if (counter == max_iter)
+	if ( !(fa * fb < 0) )
 	{
-		printf("WARNING: In secant_method. Reached the maximum number of iterations.\n");
+		printf("ERROR: In brent_method. Signs of f(lower_bound) and f(upper_bound) must be opposites.\n");
+		return NO_DOUBLE_ARG;
 	}
 
-	return x2;
+	if (fabs(fa) < fabs(fb))
+	{
+		double aux = a;
+
+		a = b;
+		b = aux;
+
+		aux = fa;
+		fa = fb;
+		fb = aux;
+	}
+
+	double c = a;
+	double fc = fa;
+	int mflag = 1;
+	double s = 0;
+	double d = 0;
+
+	for (counter = 1; counter < max_iter; counter++)
+	{
+		/*check tolerance*/
+		if (fabs(b-a) < tolerance)
+		{
+			return s;
+		}
+
+		if (fa != fc && fb != fc)
+		{
+			/*inverse quadratic interpolation*/
+			s = ( a * fb * fc / ((fa - fb) * (fa - fc)) )
+				+ ( b * fa * fc / ((fb - fa) * (fb - fc)) )
+				+ ( c * fa * fb / ((fc - fa) * (fc - fb)) );
+		}
+		else
+		{
+			/*secant method*/
+			s = b - fb * (b - a) / (fb - fa);
+		}
+
+		/* checks to see whether we can use the faster converging quadratic && secant methods or if we need to use bisection */
+		if (	( (s < (3 * a + b) * 0.25) || (s > b) ) ||
+				( mflag && (fabs(s-b) >= (fabs(b-c) * 0.5)) ) ||
+				( !mflag && (fabs(s-b) >= (fabs(c-d) * 0.5)) ) ||
+				( mflag && (fabs(b-c) < tolerance) ) ||
+				( !mflag && (fabs(c-d) < tolerance))	)
+		{
+			/* bisection method */
+			s = (a+b)*0.5;
+ 
+			mflag = 1;
+		}
+		else
+		{
+			mflag = 0;
+		}
+
+		fs = f(s);
+		d = c;
+		c = b;
+		fc = fb;
+
+		if (fa * fs < 0)
+		{
+			b = s;
+			fb = fs;
+		}
+		else 
+		{
+			a = s;
+			fa = fs;
+		}
+
+		if (fabs(fa) < fabs(fb))
+		{
+			double aux = a;
+
+			a = b;
+			b = aux;
+
+			aux = fa;
+			fa = fb;
+			fb = aux;
+		}
+	}
+
+	printf("WARNING: In brent_method. Reached the maximum number of iterations.\n");
+
+	return s;
 }
 
 /**
@@ -101,7 +187,7 @@ static double kernel_fsolve(double (*f)(double), double (*df)(double), double x0
 		printf("ERROR: In kernel_fsolve. You must pass a function to the f argument.\n");
 		return NO_DOUBLE_ARG;
 	}
-	return (df == NULL) ? secant_method(f, x0, x1, tolerance, max_iter) : newton_method(f, df, x0, tolerance, max_iter);
+	return (df == NULL) ? brent_method(f, x0, x1, tolerance, max_iter) : newton_method(f, df, x0, tolerance, max_iter);
 }
 
 /**********************************************
