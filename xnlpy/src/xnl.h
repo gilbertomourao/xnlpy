@@ -27,7 +27,7 @@ name will appear in the acknowledgments (README.md).
 #include <Python.h>
 
 /*Linear Algebra*/
-#include "array.h"
+#include "arrayobject.h"
 
 xparrayObject *py_zeros(PyObject *, PyObject *);
 xparrayObject *py_ones(PyObject *, PyObject *);

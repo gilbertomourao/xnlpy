@@ -20,26 +20,31 @@ name will appear in the acknowledgments (README.md).
 ***************************************************************************/
 
 #ifndef XNLPY_H
-	#error "array.h isn't intended to be included directly. Include xnl.h instead."
+	#error "arrayobject.h isn't intended to be included directly. Include xnl.h instead."
 #endif
 
-#ifndef ARRAY_H
-#define ARRAY_H
+#ifndef ARRAYOBJECT_H
+#define ARRAYOBJECT_H
 
 #include <structmember.h>
 #include <string.h>
+#include <sys/types.h> /* for size_t */
 
 /* Array type */
-typedef struct 
+typedef struct xparray
 {
 	PyObject_HEAD /*declares ob_base of type PyObject*/
 	double **data; /* pointer to the C array */
 	int rows;
 	int cols;
+	struct xparray *aux; /* auxiliary object for 2D array assignment */
+	int curr_row; /* current row, for a 2D array assignment */
+	int curr_dim; /* current dimension, for 2D array slice */
+	int row_step; /* row slice step for assignment */
 } xparrayObject;
 
 PyTypeObject xparrayType;
 
 #define PyXParray_Check(obj) (strcmp(obj->ob_type->tp_name, "xnlpy.array"))
 
-#endif /*ARRAY_H*/
+#endif /*ARRAYOBJECT_H*/
