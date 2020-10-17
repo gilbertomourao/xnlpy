@@ -34,13 +34,26 @@ name will appear in the acknowledgments (README.md).
 typedef struct xparray
 {
 	PyObject_HEAD /*declares ob_base of type PyObject*/
+
 	double **data; /* pointer to the C array */
 	int rows;
 	int cols;
+
+	/**
+	 * Since I just wanted to make the xparray available as a 
+	 * 1D or 2D array, I decided to not make it point to another 
+	 * PyObject *, like in the original list implementation. Only 
+	 * A[_] and A[_][_] notations are allowed. The following members
+	 * are private. They're just used to deal with xparray_as_mapping 
+	 * methods (index notation).
+	 */
+
 	struct xparray *aux; /* auxiliary object for 2D array assignment */
-	int curr_row; /* current row, for a 2D array assignment */
-	int curr_dim; /* current dimension, for 2D array slice */
-	int row_step; /* row slice step for assignment */
+	Py_ssize_t ilow;
+	Py_ssize_t ihigh;
+	Py_ssize_t row_step; /* row slice step for assignment */
+	Py_ssize_t tuplen; /* tuple length */
+	Py_ssize_t index_count;
 } xparrayObject;
 
 PyTypeObject xparrayType;

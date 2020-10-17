@@ -127,8 +127,11 @@ static int xparray_init(xparrayObject *self, PyObject *args, PyObject *kwds)
 	self->rows = TupleSize;
 	self->cols = ListSize;
 	self->aux = NULL;
-	self->curr_row = 0;
-	self->curr_dim = 0;
+	self->ilow = 0;
+	self->ihigh = 0;
+	self->row_step = 0;
+	self->tuplen = TupleSize;
+	self->index_count = 0;
 
 	return 0;
 }
@@ -145,8 +148,12 @@ static PyObject *xparray_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 		self->data = NULL;
 		self->rows = 0;
 		self->cols = 0;
-		self->curr_row = 0;
-		self->curr_dim = 0;
+		self->aux = NULL;
+		self->ilow = 0;
+		self->ihigh = 0;
+		self->row_step = 0;
+		self->tuplen = 0;
+		self->index_count = 0;
 	}
 
 	return (PyObject *) self;
@@ -173,51 +180,14 @@ static void xparray_dealloc(xparrayObject *self)
 /**
  * tp_as_method functions
  */
-/*
-static PyObject *xparray_read(xparrayObject *self, PyObject *args)
-{
-	int i = 0, j = 0;
-	double value;
-	PyObject *retval;
 
-	if (!PyArg_ParseTuple(args, "ii", &i, &j))
-	{
-		return NULL;
-	}
-
-	if (i < 0 || j < 0 || i > self->rows - 1 || j > self->cols - 1)
-	{
-		PyErr_SetString(PyExc_TypeError, "Invalid indices.");
-		return NULL;
-	}
-
-	value = self->data[i][j];
-	retval = Py_BuildValue("d", value);
-
-	return retval;
-}
-
-static PyObject *xparray_write(xparrayObject *self, PyObject *args)
-{
-	int i, j;
-	double value;
-
-	if (!PyArg_ParseTuple(args, "iid", &i, &j, &value))
-	{
-		return NULL;
-	}
-
-	if (i < 0 || j < 0 || i > self->rows - 1 || j > self->cols - 1)
-	{
-		PyErr_SetString(PyExc_TypeError, "Invalid indices.");
-		return NULL;
-	}
-
-	self->data[i][j] = value;
-
-	return Py_BuildValue("");
-}
-*/
+/**
+ * print method
+ *
+ * I'm keeping this method here. It can print the xparray 
+ * given a certain precision as parameter. It may be useful 
+ * at some point(?).
+ */
 static PyObject *xparray_print(xparrayObject *self, PyObject *args)
 {
 	int i = 0, j = 0, precision = 1;
@@ -254,10 +224,6 @@ static PyObject *xparray_print(xparrayObject *self, PyObject *args)
 
 static PyMethodDef xparray_methods[] = 
 {
-	/*
-	{"read", (PyCFunction) xparray_read, METH_VARARGS, "Return the element at (row, column)"},
-	{"write", (PyCFunction) xparray_write, METH_VARARGS, "Set the element at (row, column)"},
-	*/
 	{"print", (PyCFunction) xparray_print, METH_VARARGS, "Print the array"},
 
 	{NULL} /*Sentinel*/
@@ -671,27 +637,67 @@ static PyNumberMethods xparray_as_number =
 };
 
 /**
+ * 
  * tp_as_mapping functions
+ * 
  */
 
+/**
+ * len() function
+ *
+ * Returns the largest dimension of the xparray. 
+ *
+ * e.g. 
+ * >> A = xp.array([1,2,3],[4,5,6])
+ * >> len(A)
+ * 3
+ * 
+ */
 static Py_ssize_t
 xparray_length(xparrayObject *a)
 {
 	return (a ->rows >= a->cols) ? a->rows : a->cols;
 }
 
+/**
+ * For index errors
+ */
 static PyObject *indexerr = NULL;
 
+/**
+ * valid_index()
+ * 
+ * To check if it is a valid index or not.
+ * It follows the same implementation off listobject.c (see source code on github)
+ */
 static inline int 
 valid_index(Py_ssize_t i, Py_ssize_t limit)
 {
 	return (size_t) i < (size_t) limit;
 }
 
+/**
+ * xparray_item()
+ *
+ * Returns an object. There are the following cases:
+ *
+ * A[i] : returns a xparray with 1 row and cols columns if
+ * 		  the original array A is a 2d array. If it is a 1d 
+ * 		  array, then returns a float python object corresponding
+ * 		  to the double in the position i.
+ *
+ * A[i][j] : returns a float pyton object corresponding to
+ * 			 the double in the position [i][j].
+ *
+ * A[io:if:s][j] : Returns the column j from line io to line if, 
+ * 				   with step s. If io = if, returns a float python 
+ * 				   corresponding to the position [io][j].
+ */
 static PyObject *
 xparray_item(xparrayObject *a, Py_ssize_t pos)
 {
 	Py_ssize_t limit = (a->rows == 1) ? a->cols : a->rows;
+	
 	if (!valid_index(pos, limit))
 	{
 		if (indexerr == NULL)
@@ -703,6 +709,16 @@ xparray_item(xparrayObject *a, Py_ssize_t pos)
 		PyErr_SetObject(PyExc_IndexError, indexerr);
 		return NULL;
 	}
+
+	if (a->aux == NULL)
+	{
+		/*Reset parameters*/
+		a->ilow = 0;
+		a->ihigh = 0;
+		a->row_step = 0;
+		a->tuplen = 1;
+	}
+
 	if (a->rows == 1)
 	{
 		return Py_BuildValue("d", a->data[0][pos]); /*1D array*/
@@ -711,133 +727,26 @@ xparray_item(xparrayObject *a, Py_ssize_t pos)
 	{
 		/*Returns a new array*/
 		/*array[i]*/
-		int i, j;
-		int rows = 1;
-		int cols = a->cols;
+		Py_ssize_t i, j;
+		Py_ssize_t i_init = pos * (a->aux == NULL) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t i_end = pos * (a->aux == NULL) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t j_init = 0 * (a->aux == NULL) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		Py_ssize_t tup_len = 0;
 
-		PyObject *argList = PyTuple_New(rows);
+		PyObject *argList = PyTuple_New(a->tuplen);
 
-		for (i = 0; i < rows; i++)
+		for (i = i_init; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step)
 		{
-			PyObject *temp = PyList_New(cols);
+			PyObject *temp = PyList_New((a->row_step == 0) ? a->cols : 1);
+			Py_ssize_t j_list = 0;
 
-			for (j = 0; j < cols; j++)
+			for (j = j_init; j <= j_end; j++)
 			{
-				PyObject *number = PyFloat_FromDouble(a->data[pos][j]);
+				xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+				PyObject *number = PyFloat_FromDouble(array->data[i][j]);
 
-				if (PyList_SetItem(temp, j, number) == -1) /*steals the reference of number*/
-				{
-					return NULL;
-				}
-			}
-
-			PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
-		}
-
-		/*call the array object*/
-		xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-
-		Py_DECREF(argList);
-
-		if (ret_array == NULL)
-		{
-			/*Will print the messages from xparray*/
-			return NULL;
-		}
-
-		ret_array->curr_row = pos;
-		ret_array->aux = a;
-		ret_array->curr_dim = 1;
-
-		return (PyObject *) ret_array;
-	}
-}
-
-static PyObject *
-xparray_slice(xparrayObject *a, Py_ssize_t ilow, Py_ssize_t ihigh, Py_ssize_t step)
-{
-	Py_ssize_t len = 0, iaux = ilow;
-
-	do
-	{
-		iaux += step;
-		len++;
-	} while ((step > 0) ? iaux <= ihigh : iaux >= ihigh);
-
-	if (a->curr_dim == 1)
-	{
-		if (len > a->cols)
-		{
-			PyErr_SetString(PyExc_IndexError, "xparray index out of range");
-			return NULL;
-		}
-
-		if (len == 1)
-		{
-			return Py_BuildValue("d", a->data[0][ilow]);
-		}
-
-		/*1D array*/
-		int i, j, list_len = 0;
-		int rows = a->curr_row;
-		int cols = len;
-
-		PyObject *argList = PyTuple_New(rows);
-		
-		for (i = 0; i < rows; i++)
-		{
-			PyObject *temp = PyList_New(cols);
-
-			for (j = ilow; (step > 0) ? j <= ihigh : j >= ihigh; j+=step)
-			{
-				PyObject *number = PyFloat_FromDouble(a->data[i][j]);
-
-				if (PyList_SetItem(temp, list_len++, number) == -1) /*steals the reference of number*/
-				{
-					return NULL;
-				}
-			}
-
-			PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/	
-		}
-
-		/*call the array object*/
-		xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-
-		Py_DECREF(argList);
-
-		if (ret_array == NULL)
-		{
-			/*Will print the messages from xparray*/
-			return NULL;
-		}
-
-		return (PyObject *) ret_array;		
-	}
-	else
-	{
-		if (len > a->rows)
-		{
-			PyErr_SetString(PyExc_IndexError, "xparray index out of range");
-			return NULL;
-		}
-
-		/*2D array*/
-		Py_ssize_t i, j, tup_len = 0;
-		Py_ssize_t rows = len;
-		Py_ssize_t cols = a->cols;
-
-		PyObject *argList = PyTuple_New(rows);
-
-		for (i = ilow; (step > 0) ? i <= ihigh : i >= ihigh; i+=step)
-		{
-			PyObject *temp = PyList_New(cols);
-
-			for (j = 0; j < cols; j++)
-			{
-				PyObject *number = PyFloat_FromDouble(a->data[i][j]);
-
-				if (PyList_SetItem(temp, j, number) == -1) /*steals the reference of number*/
+				if (PyList_SetItem(temp, j_list++, number) == -1) /*steals the reference of number*/
 				{
 					return NULL;
 				}
@@ -857,19 +766,162 @@ xparray_slice(xparrayObject *a, Py_ssize_t ilow, Py_ssize_t ihigh, Py_ssize_t st
 			return NULL;
 		}
 
-		ret_array->aux = a;
-		ret_array->curr_row = ilow;
-		ret_array->curr_dim = 1;
-		ret_array->row_step = step;
+		/*reset aux*/
+		if (a->aux == NULL)
+		{
+			ret_array->aux = a;
+			if (a->rows == 1) /*1D array*/
+				ret_array->index_count = 2; /*forces index_count to 2*/
+		} 
+		else 
+		{
+			ret_array->aux = NULL;
+			ret_array->index_count = 2;
+		}
+
+		ret_array->ilow = pos;
+		ret_array->ihigh = pos;
+		ret_array->tuplen = 1;
+		/*keeps ret_array->row_step equals to the current value*/
 
 		return (PyObject *) ret_array;
 	}
+}
+
+/**
+ * xparray_slice()
+ *
+ * Returns an object. There are the following cases:
+ *
+ * A[io:if:si] : returns a xparray with len rows and cols columns if
+ * 		  		 the original array A is a 2d array, where len is the 
+ * 		  		 number of elements on the interval [io,if], given a 
+ * 		  		 step si. If it is a 1d array, then returns a xparray 
+ * 		  		 with 1 row and len cols. If len = 1, then returns a 
+ * 		  		 python float corresponding to the position [io].
+ *
+ * A[i][jo:jf:sj] : returns a xparray with 1 row and len columns, where
+ * 					len is the number of elements on the interval [jo,jf], 
+ * 					given a step sj. If len = 1, returns a python float 
+ * 					corresponding to the position [i][jo].
+ *
+ * A[io:if:si][jo:jf:sj] : Returns a xparray with len_i rows and len_j cols, 
+ * 						   where len_i is the number of elements on the 
+ * 						   interval [io,if], given a step si, and len_j is 
+ * 						   the number of elements on the interval [jo,jf], 
+ * 						   given a step sj. If io=if and jo=jf, returns a 
+ * 						   python float corresponding to the position [io][jo].
+ */
+static PyObject *
+xparray_slice(xparrayObject *a, Py_ssize_t ilow, Py_ssize_t ihigh, Py_ssize_t step, Py_ssize_t limit)
+{
+	Py_ssize_t len = 0, iaux = ilow;
+
+	do
+	{
+		iaux += step;
+		len++;
+	} while ((step > 0) ? iaux <= ihigh : iaux >= ihigh);
+
+	if (len > limit)
+	{
+		PyErr_SetString(PyExc_IndexError, "xparray index out of range");
+		return NULL;
+	}
+
+	if (a->aux == NULL)
+	{
+		a->ilow = ilow;
+		a->ihigh = ihigh;
+		a->row_step = step;
+		a->tuplen = (a->rows == 1) ? 1: len;
+	}
+	else if ((a->ilow == a->ihigh) && (ilow == ihigh))
+	{
+		return Py_BuildValue("d", a->aux->data[a->ilow][ilow]);
+	}
+
+	Py_ssize_t i, j;
+	Py_ssize_t i_init = ilow * (a->aux == NULL && a->rows > 1) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+	Py_ssize_t i_end = ihigh * (a->aux == NULL && a->rows > 1) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+	Py_ssize_t j_init = 0 * (a->aux == NULL && a->rows > 1) + ilow * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+	Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL && a->rows > 1) + ihigh * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+	Py_ssize_t j_step = 0 * (a->aux == NULL && a->rows > 1) + step * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+	Py_ssize_t tup_len = 0;
+	Py_ssize_t list_len;
+
+	if (a->aux == NULL)
+	{
+		if (a->rows == 1)
+			list_len = len;
+		else 
+			list_len = a->cols;
+	} else 
+		list_len = len;
+
+	PyObject *argList = PyTuple_New(a->tuplen);
+
+	for (i = i_init; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step)
+	{
+		PyObject *temp = PyList_New(list_len);
+		Py_ssize_t j_list = 0;
+
+		for (j = j_init; (j_step >= 0) ? j <= j_end : j >= j_end; j += (j_step == 0) ? 1 : j_step)
+		{
+			xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+			PyObject *number = PyFloat_FromDouble(array->data[i][j]);
+
+			if (PyList_SetItem(temp, j_list++, number) == -1) /*steals the reference of number*/
+			{
+				return NULL;
+			}
+		}
+
+		PyTuple_SetItem(argList, tup_len++, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (ret_array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	/*reset aux*/
+	if (a->aux == NULL)
+	{
+		ret_array->aux = a;
+		if (a->rows == 1) /*1D array*/
+			ret_array->index_count = 2; /*forces index_count to 2*/
+	} 
+	else 
+	{
+		ret_array->aux = NULL;
+		ret_array->index_count = 2;
+	}
+
+	ret_array->ilow = ilow;
+	ret_array->ihigh = ihigh;
+	ret_array->row_step = step;
+
+	return (PyObject *) ret_array;
 
 }
 
 static PyObject *
 xparray_subscript(xparrayObject* self, PyObject *item)
 {
+	if (self->index_count == 2)
+	{
+		PyErr_SetString(PyExc_IndexError, 
+						"xparray doesn't work with more than one (1D array) or two (2D array) brackets.");
+		return NULL;
+	}
+
 	if (PyIndex_Check(item)) /*returns 1 if item is an index integer (ex: [1]) and 0 otherwise*/
 	{
 		Py_ssize_t i;
@@ -903,17 +955,19 @@ xparray_subscript(xparrayObject* self, PyObject *item)
 			return NULL;	
 		}
 
-/*
-		Py_ssize_t length = (self->curr_dim == 1) ? self->cols : self->rows;
+		Py_ssize_t limit;
 
-		slicelength = PySlice_AdjustIndices(length, &start, &stop, step);
-*/	
-		/*Now start and stop will be adjusted to the max/min values*/
+		if (self->aux == NULL)
+		{
+			limit = (self->rows == 1) ? self->cols : self->rows;
+		}
+		else 
+		{
+			limit = self->cols;
+		}
 
-		Py_ssize_t limit = (self->curr_dim == 1) ? self->cols : self->rows;
-
-		start += (start < 0) * ( (self->rows == 1) ? self->cols : self->rows );
-		stop += (stop < 0) * ( (self->rows == 1) ? self->cols : self->rows );
+		start += (start < 0) * limit;
+		stop += (stop < 0) * limit;
 
 		if (!valid_index(start, limit) || !valid_index(stop, limit))
 		{
@@ -936,7 +990,7 @@ xparray_subscript(xparrayObject* self, PyObject *item)
 			return NULL;	
 		}		
 
-		return xparray_slice(self, start, stop, step);
+		return xparray_slice(self, start, stop, step, limit);
 	}
 	else 
 	{
@@ -947,6 +1001,16 @@ xparray_subscript(xparrayObject* self, PyObject *item)
 	}
 }
 
+/**
+ * xparray_ass_item()
+ *
+ * Same of xparray_item, but with assignment.
+ *
+ * You can assign a xparray to a xparray or a number to a xparray. 
+ * In the first case, be sure that both xparrays have the same dimensions. 
+ * In the last case, the number will be assigned to all positions of the 
+ * xparray argument.
+ */
 static int 
 xparray_ass_item(xparrayObject *a, Py_ssize_t pos, PyObject *v)
 {
@@ -958,24 +1022,39 @@ xparray_ass_item(xparrayObject *a, Py_ssize_t pos, PyObject *v)
 		return -1;
 	}
 
+	if (a->aux == NULL)
+	{
+		/*Reset parameters*/
+		a->ilow = 0;
+		a->ihigh = 0;
+		a->row_step = 0;
+		a->tuplen = 1;
+	}
+
 	/*Check if v is numeric*/
 	if (PyNumber_Check(v) != 1)
 	{
-		if (!PyXParray_Check(v) && a->rows > 1)
+		if (!PyXParray_Check(v))
 		{
 			/*If the input is a xparray*/
 			xparrayObject *array_v = (xparrayObject *) v;
 
 			/*Check if the arrays' dimensions are equal*/
-			if (array_v->rows == 1 && a->cols == array_v->cols)
+			if (a->tuplen == array_v->rows && a->cols == array_v->cols)
 			{
-				int i,j;
+				Py_ssize_t i, j;
+				Py_ssize_t i_init = pos * (a->aux == NULL) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+				Py_ssize_t i_end = pos * (a->aux == NULL) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+				Py_ssize_t j_init = 0 * (a->aux == NULL) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+				Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+				Py_ssize_t i_v, j_v;
 
-				for (i = 0; i < array_v->rows; i++)
+				for (i = i_init, i_v = 0; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step, i_v++)
 				{
-					for (j = 0; j < array_v->cols; j++)
+					for (j = j_init, j_v = 0; j <= j_end; j++, j_v++)
 					{
-						a->data[pos][j] = array_v->data[i][j];
+						xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+						array->data[i][j] = array_v->data[i_v][j_v];
 					}
 				}
 
@@ -988,7 +1067,7 @@ xparray_ass_item(xparrayObject *a, Py_ssize_t pos, PyObject *v)
 			}
 		}
 
-		PyErr_SetString(PyExc_TypeError, "You must assign a number to a xparray element or a xparray to a xparray");
+		PyErr_SetString(PyExc_TypeError, "You must assign a number to a xparray or a xparray to a xparray");
 
 		return -1;
 	}
@@ -997,14 +1076,129 @@ xparray_ass_item(xparrayObject *a, Py_ssize_t pos, PyObject *v)
 		/*Convert v to a python float*/
 		v = PyNumber_Float(v);
 		/*now to C double*/
-		if (a->rows == 1)
+		double dv = PyFloat_AsDouble(v);
+		
+		Py_ssize_t i, j;
+		Py_ssize_t i_init = pos * (a->aux == NULL && a->rows != 1) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t i_end = pos * (a->aux == NULL && a->rows != 1) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t j_init = 0 * (a->aux == NULL && a->rows != 1) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL && a->rows != 1) + pos * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		
+		for (i = i_init; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step)
 		{
-			a->aux->data[a->curr_row][pos] = PyFloat_AsDouble(v);
+			for (j = j_init; j <= j_end; j++)
+			{
+				xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+				array->data[i][j] = dv;
+			}
 		}
-		else 
-		{
-			PyErr_SetString(PyExc_TypeError, "cannot assign a number to a xparray");
+
+		/*just to guarantee*/
+		if (PyErr_Occurred())
 			return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * xparray_ass_slice()
+ * 
+ * Same of xparray_slice, but with assignment.
+ *
+ * You can assign a xparray to a xparray or a number to a xparray. 
+ * In the first case, be sure that both xparrays have the same dimensions. 
+ * In the last case, the number will be assigned to all positions of the 
+ * xparray argument.
+ */
+static int 
+xparray_ass_slice(xparrayObject *a, Py_ssize_t ilow, Py_ssize_t ihigh, Py_ssize_t step, Py_ssize_t limit, PyObject *v)
+{
+	Py_ssize_t len = 0, iaux = ilow;
+
+	do
+	{
+		iaux += step;
+		len++;
+	} while ((step > 0) ? iaux <= ihigh : iaux >= ihigh);
+
+	if (len > limit)
+	{
+		PyErr_SetString(PyExc_IndexError, "xparray index out of range");
+		return -1;
+	}
+
+	if (a->aux == NULL)
+	{
+		a->ilow = ilow;
+		a->ihigh = ihigh;
+		a->row_step = step;
+		a->tuplen = (a->rows == 1) ? 1: len;
+	}
+
+	/*Check if v is numeric*/
+	if (PyNumber_Check(v) != 1)
+	{
+		if (!PyXParray_Check(v))
+		{
+			/*If the input is a xparray*/
+			xparrayObject *array_v = (xparrayObject *) v;
+			Py_ssize_t cols_len = (a->aux == NULL) ? a->cols : len;
+
+			/*Check if the arrays' dimensions are equal*/
+			if (a->tuplen == array_v->rows && cols_len == array_v->cols)
+			{
+				Py_ssize_t i, j;
+				Py_ssize_t i_init = ilow * (a->aux == NULL) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+				Py_ssize_t i_end = ihigh * (a->aux == NULL) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+				Py_ssize_t j_init = 0 * (a->aux == NULL) + ilow * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+				Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL) + ihigh * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+				Py_ssize_t j_step = 0 * (a->aux == NULL) + step * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+				Py_ssize_t i_v, j_v;
+
+				for (i = i_init, i_v = 0; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step, i_v++)
+				{
+					for (j = j_init, j_v = 0; (j_step >= 0) ? j <= j_end : j >= j_end; j += (j_step == 0) ? 1 : j_step, j_v++)
+					{
+						xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+						array->data[i][j] = array_v->data[i_v][j_v];
+					}
+				}
+
+				return 0;
+			}
+			else 
+			{
+				PyErr_SetString(PyExc_ValueError, "When assign a xparray to another xparray, be sure that both have the same dimensions");
+				return -1;
+			}
+		}
+
+		PyErr_SetString(PyExc_TypeError, "You must assign a number to a xparray or a xparray to a xparray");
+
+		return -1;
+	}
+	else
+	{
+		/*Convert v to a python float*/
+		v = PyNumber_Float(v);
+		/*now to C double*/
+		double dv = PyFloat_AsDouble(v);
+		
+		Py_ssize_t i, j;
+		Py_ssize_t i_init = ilow * (a->aux == NULL) + a->ilow * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t i_end = ihigh * (a->aux == NULL) + a->ihigh * (a->aux != NULL) + 0 * (a->aux == NULL && a->rows == 1);
+		Py_ssize_t j_init = 0 * (a->aux == NULL) + ilow * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		Py_ssize_t j_end = (a->cols - 1) * (a->aux == NULL) + ihigh * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+		Py_ssize_t j_step = 0 * (a->aux == NULL) + step * (a->aux != NULL || (a->aux == NULL && a->rows == 1));
+	
+		for (i = i_init; (a->row_step >= 0) ? i <= i_end : i >= i_end; i += (a->row_step == 0) ? 1 : a->row_step)
+		{
+			for (j = j_init; (j_step >= 0) ? j <= j_end : j >= j_end; j += (j_step == 0) ? 1 : j_step)
+			{
+				xparrayObject *array = (a->aux == NULL) ? a : a->aux;
+				array->data[i][j] = dv;
+			}
 		}
 
 		/*just to guarantee*/
@@ -1016,141 +1210,15 @@ xparray_ass_item(xparrayObject *a, Py_ssize_t pos, PyObject *v)
 }
 
 static int 
-xparray_ass_slice(xparrayObject *a, Py_ssize_t ilow, Py_ssize_t ihigh, Py_ssize_t step, PyObject *v)
-{
-	Py_ssize_t len = 0, iaux = ilow;
-
-	do
-	{
-		iaux += step;
-		len++;
-	} while ((step > 0) ? iaux <= ihigh : iaux >= ihigh);
-
-	if (a->curr_dim == 1)
-	{
-		if (len > a->cols)
-		{
-			PyErr_SetString(PyExc_IndexError, "xparray index out of range");
-			return -1;
-		}
-
-		if (PyNumber_Check(v) != 1)
-		{
-			if (!PyXParray_Check(v))
-			{
-				/*If the input is a xparray*/
-				xparrayObject *array_v = (xparrayObject *) v;
-
-				/*Check if the arrays' dimensions are equal*/
-				if (a->rows == array_v->rows && len == array_v->cols)
-				{
-					int i, j, k;
-
-					for (i = 0; i < a->rows; i++)
-					{
-						for (j = ilow, k = 0; (step > 0) ? j <= ihigh : j >= ihigh; j += step, k++)
-						{
-							int row_index = a->curr_row + i*a->row_step;
-							row_index += (row_index < 0) ? a->aux->rows: 0;
-							a->aux->data[row_index][j] = array_v->data[i][k];
-						}
-					}
-				}
-				else 
-				{
-					PyErr_SetString(PyExc_ValueError, "When assign a xparray to another xparray, be sure that both have the same dimensions");
-					return -1;
-				}
-
-				return 0;
-			}
-
-			PyErr_SetString(PyExc_TypeError, "You must assign a number to a xparray element or a xparray to a xparray");
-
-			return -1;
-		}
-
-		/*v is a number, then assign it to all xparray elements*/
-		/*Convert v to a python float*/
-		v = PyNumber_Float(v);
-		double val_v = PyFloat_AsDouble(v);
-
-		int i, j;
-
-		for (i = 0; i < a->rows; i++)
-		{
-			for (j = ilow; (step > 0) ? j <= ihigh : j >= ihigh; j += step)
-			{
-				int row_index = a->curr_row + i*a->row_step;
-				row_index += (row_index < 0) ? a->aux->rows: 0;
-				a->aux->data[row_index][j] = val_v;
-			}
-		}
-	}
-	else 
-	{
-		if (len > a->rows)
-		{
-			PyErr_SetString(PyExc_IndexError, "xparray index out of range");
-			return -1;
-		}
-
-		if (PyNumber_Check(v) != 1)
-		{
-			if (!PyXParray_Check(v))
-			{
-				/*If the input is a xparray*/
-				xparrayObject *array_v = (xparrayObject *) v;
-
-				/*Check if the arrays' dimensions are equal*/
-				if (len == array_v->rows && a->cols == array_v->cols)
-				{
-					int i, j, k;
-
-					for (i = ilow, k = 0; (step > 0) ? i <= ihigh : i >= ihigh; i+=step, k++)
-					{
-						for (j = 0; j < a->cols;j++)
-						{
-							a->data[i][j] = array_v->data[k][j];
-						}
-					}
-				}
-				else 
-				{
-					PyErr_SetString(PyExc_ValueError, "When assign a xparray to another xparray, be sure that both have the same dimensions");
-					return -1;
-				}
-
-				return 0;
-			}
-
-			PyErr_SetString(PyExc_TypeError, "You must assign a number to a xparray element or a xparray to a xparray");
-
-			return -1;	
-		}
-
-		/*v is a number, then assign it to all xparray elements*/
-		/*Convert v to a python float*/
-		v = PyNumber_Float(v);
-		double val_v = PyFloat_AsDouble(v);
-
-		int i, j;
-
-		for (i = ilow; (step > 0) ? i <= ihigh : i >= ihigh; i+=step)
-		{
-			for (j = 0; j < a->cols;j++)
-			{
-				a->data[i][j] = val_v;
-			}
-		}			
-	}
-
-	return 0;
-}
-
-static int 
 xparray_ass_subscript(xparrayObject *self, PyObject *item, PyObject *value)
 {
+	if (self->index_count == 2)
+	{
+		PyErr_SetString(PyExc_IndexError, 
+						"xparray doesn't work with more than one (1D array) or two (2D array) brackets.");
+		return -1;
+	}
+
 	if (PyIndex_Check(item))
 	{
 		Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
@@ -1176,10 +1244,19 @@ xparray_ass_subscript(xparrayObject *self, PyObject *item, PyObject *value)
 			return -1;	
 		}
 
-		Py_ssize_t limit = (self->curr_dim == 1) ? self->cols : self->rows;
+		Py_ssize_t limit;
 
-		start += (start < 0) * ( (self->rows == 1) ? self->cols : self->rows );
-		stop += (stop < 0) * ( (self->rows == 1) ? self->cols : self->rows );
+		if (self->aux == NULL)
+		{
+			limit = (self->rows == 1) ? self->cols : self->rows;
+		}
+		else 
+		{
+			limit = self->cols;
+		}
+
+		start += (start < 0) * limit;
+		stop += (stop < 0) * limit;
 
 		if (!valid_index(start, limit) || !valid_index(stop, limit))
 		{
@@ -1202,7 +1279,7 @@ xparray_ass_subscript(xparrayObject *self, PyObject *item, PyObject *value)
 			return -1;	
 		}		
 
-		return xparray_ass_slice(self, start, stop, step, value);
+		return xparray_ass_slice(self, start, stop, step, limit, value);
 	}
 	else
 	{
@@ -1220,6 +1297,87 @@ static PyMappingMethods xparray_as_mapping =
 	(objobjargproc) xparray_ass_subscript
 };
 
+/**
+ * repr and str functions
+ */
+
+static PyObject *
+xparray_repr(xparrayObject *self)
+{
+	Py_ssize_t i;
+	PyObject *s; /*object representation of double*/
+	_PyUnicodeWriter writer;
+
+	i = Py_ReprEnter((PyObject *) self);
+	if (i != 0)
+	{
+		return i > 0 ? PyUnicode_FromString("xparray([...])") : NULL;
+	}
+
+	_PyUnicodeWriter_Init(&writer);
+	writer.overallocate = 1;
+	/**
+	 * First lines: 
+	 * "xparray([" + "1" + ", 2" * (cols - 1) + "],\n"
+	 * "        [" + "1" + ", 2" * (cols - 1) + "],\n"
+	 * ...
+	 * Last line:
+	 * "        [" + "1" + ", 2" * (cols - 1) + "])"
+	 */
+	writer.min_length = self->rows * (9 + 1 + (2 + 1) * (self->cols - 1) + 1 + 1 + 1) - 1;
+
+	if (_PyUnicodeWriter_WriteASCIIString(&writer, "xparray([", 9) < 0) /*returns -1 on error*/
+		goto error; /*original implementation*/
+
+	/*Do repr() on each element for rows and cols*/
+	int i_row, j_col;
+
+	for (i_row = 0; i_row < self->rows; i_row++)
+	{
+		for (j_col = 0; j_col < self->cols; j_col++)
+		{
+			if (j_col > 0)
+			{
+				if (_PyUnicodeWriter_WriteASCIIString(&writer, ", ", 2) < 0)
+					goto error;
+			}
+
+			s = PyObject_Repr(Py_BuildValue("d", self->data[i_row][j_col]));
+			if (s == NULL)
+				goto error;
+
+			if(_PyUnicodeWriter_WriteStr(&writer, s) < 0)
+			{
+				Py_DECREF(s);
+				goto error;
+			}
+
+			Py_DECREF(s);
+		}
+
+		if (self->rows > 1 && i_row < self->rows - 1)
+		{
+			if (_PyUnicodeWriter_WriteASCIIString(&writer, "],\n        [", 12) < 0)
+				goto error;
+		}
+		else
+		{
+			/*Last line*/
+			if (_PyUnicodeWriter_WriteASCIIString(&writer, "])", 2) < 0)
+				goto error;
+		}	
+	}
+
+	writer.overallocate = 0;
+
+	Py_ReprLeave((PyObject *) self);
+	return _PyUnicodeWriter_Finish(&writer);
+
+error: 
+	_PyUnicodeWriter_Dealloc(&writer);
+	Py_ReprLeave((PyObject *) self);
+	return NULL;
+}
 
 /**
  * 
@@ -1240,5 +1398,6 @@ PyTypeObject xparrayType =
 	.tp_members = xparray_members,
 	.tp_methods = xparray_methods,
 	.tp_as_number = &xparray_as_number,
-	.tp_as_mapping = &xparray_as_mapping
+	.tp_as_mapping = &xparray_as_mapping,
+	.tp_repr = (reprfunc) xparray_repr
 };
