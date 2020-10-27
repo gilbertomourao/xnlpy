@@ -29,17 +29,17 @@ name will appear in the acknowledgments (README.md).
 /*Linear Algebra*/
 #include "arrayobject.h"
 
-xparrayObject *py_zeros(PyObject *, PyObject *);
-xparrayObject *py_ones(PyObject *, PyObject *);
-xparrayObject *py_eye(PyObject *, PyObject *);
-xparrayObject *py_transpose(PyObject *, PyObject *);
-xparrayObject *py_GaussElimination(PyObject *, PyObject *, PyObject *);
+xparrayObject *PyXP_Zeros(PyObject *, PyObject *);
+xparrayObject *PyXP_Ones(PyObject *, PyObject *);
+xparrayObject *PyXP_Eye(PyObject *, PyObject *);
+xparrayObject *PyXP_Transpose(PyObject *, PyObject *);
+xparrayObject *PyXP_GaussElimination(PyObject *, PyObject *, PyObject *);
 
 /*Nonlinear equations*/
-PyObject *py_fsolve(PyObject *, PyObject *, PyObject *);
+PyObject *PyXP_Fsolve(PyObject *, PyObject *, PyObject *);
 
 /*Single Variable Calculus*/
-PyObject *py_diff(PyObject *, PyObject *, PyObject *);
-PyObject *py_integral(PyObject *, PyObject *, PyObject *);
+PyObject *PyXP_Diff(PyObject *, PyObject *, PyObject *);
+PyObject *PyXP_Integral(PyObject *, PyObject *, PyObject *);
 
 #endif /*XNLPY_H*/

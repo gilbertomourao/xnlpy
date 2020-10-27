@@ -260,7 +260,7 @@ static double df_callback(double callback)
 	return result;
 }
 
-PyObject *py_fsolve(PyObject *self, PyObject *args, PyObject *kwargs)
+PyObject *PyXP_Fsolve(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	/*arguments*/
 	double x0 = NO_DOUBLE_ARG;

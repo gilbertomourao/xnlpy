@@ -408,7 +408,7 @@ static Array *xnl_GaussElimination(Array *mat_A, Array *vec_b, char *direction, 
  * Python interface
  */
 
-xparrayObject *py_GaussElimination(PyObject *self, PyObject *args, PyObject *kwargs)
+xparrayObject *PyXP_GaussElimination(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	/*arguments*/
 	PyObject *arg_mat_A = NULL, *arg_vec_b = NULL;

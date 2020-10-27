@@ -1,6 +1,12 @@
 import xnlpy as xp
 #from timeit import default_timer as timer
 
+A = xp.array([1,2,3],[1,2,3],[1,2,3])
+
+print(A * 2)
+
+print(2 * A)
+
 print('\n~Testing zeros...\n')
 
 B = xp.zeros(3,5)
@@ -20,7 +26,7 @@ print('\n~Testing mult...\n')
 
 mat1 = xp.array([1, 2, 3],[4, 5, 6]);
 mat2 = xp.array([1, 2], [3, 4], [5, 6]);
-mat1x2 = mat1 * mat2
+mat1x2 = mat1 @ mat2
 print(mat1x2)
 print('~1\n')
 print(mat2 * 1.5)
@@ -30,7 +36,7 @@ print('\n~Testing transpose...\n')
 xp.transpose(mat1).print(2)
 test = xp.array([1, 2, 3, 4, 5])
 print('~2\n')
-print(test * xp.transpose(test))
+print(test @ xp.transpose(test))
 
 print('\n~Testing plus and minus...\n')
 

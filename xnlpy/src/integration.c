@@ -746,7 +746,7 @@ static double int_callback(double callback)
 }
 
 /* function to be called externally */
-PyObject *py_integral(PyObject *self, PyObject *args, PyObject *kwargs)
+PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	/*arguments*/
 	double a;

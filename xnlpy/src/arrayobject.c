@@ -188,7 +188,8 @@ static void xparray_dealloc(xparrayObject *self)
  * given a certain precision as parameter. It may be useful 
  * at some point(?).
  */
-static PyObject *xparray_print(xparrayObject *self, PyObject *args)
+static PyObject *
+xparray_print(xparrayObject *self, PyObject *args)
 {
 	int i = 0, j = 0, precision = 1;
 
@@ -233,7 +234,44 @@ static PyMethodDef xparray_methods[] =
  * tp_as_number functions
  */
 
-static PyObject *xparray_mul(PyObject *A, PyObject *B)
+xparrayObject *PyXParray_New(Py_ssize_t rows, Py_ssize_t cols)
+{
+	PyObject *argList = PyTuple_New(rows);
+	Py_ssize_t i, j;
+
+	for (i = 0; i < rows; i++)
+	{
+		PyObject *temp = PyList_New(cols);
+
+		for (j = 0; j < cols; j++)
+		{
+			PyObject *zero = PyLong_FromLong(0);
+
+			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
+			{
+				return NULL;
+			}
+		}
+
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (ret_array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	return ret_array;
+}
+
+static PyObject *
+xparray_add(PyObject *A, PyObject *B)
 {
 	double scalar;
 
@@ -252,59 +290,323 @@ static PyObject *xparray_mul(PyObject *A, PyObject *B)
 	if (A_scalar_flag == 1)
 	{
 		scalar = PyFloat_AsDouble(PyNumber_Float(A));
+		array_B = (xparrayObject *) B;
 
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
+		array_A = PyXParray_New(array_B->rows, array_B->cols);
 
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_B->rows; i++)
 		{
-			return NULL;
+			for (j = 0; j < array_B->cols; j++)
+			{
+				array_A->data[i][j] = scalar + array_B->data[i][j];
+			}
 		}
 
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_A = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_B = (xparrayObject *) B;
+		return (PyObject *) array_A;
 	}
-	else if (B_scalar_flag == 1)
+
+	if (B_scalar_flag == 1)
 	{
 		scalar = PyFloat_AsDouble(PyNumber_Float(B));
+		array_A = (xparrayObject *) A;
 
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
+		array_B = PyXParray_New(array_A->rows, array_A->cols);
 
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_A->rows; i++)
 		{
-			return NULL;
+			for (j = 0; j < array_A->cols; j++)
+			{
+				array_B->data[i][j] = array_A->data[i][j] + scalar;
+			}
 		}
 
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_B = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_A = (xparrayObject *) A;	
+		return (PyObject *) array_B;
 	}
-	else /*arrays multiplication*/
+
+	array_A = (xparrayObject *) A;
+	array_B = (xparrayObject *) B;
+
+	/*Check if the element-wise operation can be done*/
+	/**
+	 * The two input xparrays must have compatible sizes (same dimensions or one of them = 1)
+	 *
+	 * Ex: 4x4 and 4x1 --> 4x4
+	 *     1x2 and 3x5 --> incompatible
+	 *     1x2 and 2x5 --> incompatible
+	 *     2x1 and 2x5 --> 2x5
+	 *
+	 *  A->rows == B->rows or A->cols == B->cols when one dim of A and/or B = 1
+	 *  dim(A) = dim(B)
+	 */
+	int a = array_A->rows == array_B->rows, 
+		b = array_A->cols == array_B->cols,
+		c = array_A->rows == 1,
+		d = array_A->cols == 1,
+		e = array_B->rows == 1,
+		f = array_B->cols == 1;
+	if ( !( (a && b) || (b && c) || (a && d) || (b && e) || (a && f) ) )
 	{
-		array_A = (xparrayObject *) A;
+		PyErr_SetString(PyExc_TypeError, "Incompatible arrays. Element-wise can be done "
+										 "only if the two arrays are compatibles, i.e., "
+										 "if both have the same dimensions or at least one "
+										 "equivalent dimension when the other is one.");
+		return NULL;
+	}
+
+	Py_ssize_t i, j;
+	Py_ssize_t rows = (array_A->rows >= array_B->rows) ? array_A->rows : array_B->rows;
+	Py_ssize_t cols = (array_A->cols >= array_B->cols) ? array_A->cols : array_B->cols;	
+
+	xparrayObject *ret_array = PyXParray_New(rows, cols);
+
+	for (i = 0; i < rows; i++)
+	{
+		for (j = 0; j < cols; j++)
+		{
+			ret_array->data[i][j] = array_A->data[i * !c][j * !d] + array_B->data[i * !e][j * !f];
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+static PyObject *
+xparray_sub(PyObject *A, PyObject *B)
+{
+	double scalar;
+
+	int A_scalar_flag = PyNumber_Check(A),
+		B_scalar_flag = PyNumber_Check(B);
+
+	if ((PyXParray_Check(A) && (A_scalar_flag != 1)) || (B_scalar_flag != 1 && PyXParray_Check(B)))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide two xnl arrays or one xnl array and a number.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array_A = NULL, *array_B = NULL;
+
+	if (A_scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(A));
 		array_B = (xparrayObject *) B;
 
-		/*Check if the multiplication can be done*/
-		if (array_A->cols != array_B->rows)
+		array_A = PyXParray_New(array_B->rows, array_B->cols);
+
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_B->rows; i++)
 		{
-			PyErr_SetString(PyExc_TypeError, "The number of columns of A must be equal to the number of rows of B.");
-			return NULL;
+			for (j = 0; j < array_B->cols; j++)
+			{
+				array_A->data[i][j] = scalar - array_B->data[i][j];
+			}
 		}
+
+		return (PyObject *) array_A;
+	}
+
+	if (B_scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(B));
+		array_A = (xparrayObject *) A;
+
+		array_B = PyXParray_New(array_A->rows, array_A->cols);
+
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_A->rows; i++)
+		{
+			for (j = 0; j < array_A->cols; j++)
+			{
+				array_B->data[i][j] = array_A->data[i][j] - scalar;
+			}
+		}
+
+		return (PyObject *) array_B;
+	}
+
+	array_A = (xparrayObject *) A;
+	array_B = (xparrayObject *) B;
+
+	/*Check if the element-wise operation can be done*/
+	/**
+	 * The two input xparrays must have compatible sizes (same dimensions or one of them = 1)
+	 *
+	 * Ex: 4x4 and 4x1 --> 4x4
+	 *     1x2 and 3x5 --> incompatible
+	 *     1x2 and 2x5 --> incompatible
+	 *     2x1 and 2x5 --> 2x5
+	 *
+	 *  A->rows == B->rows or A->cols == B->cols when one dim of A and/or B = 1
+	 *  dim(A) = dim(B)
+	 */
+	int a = array_A->rows == array_B->rows, 
+		b = array_A->cols == array_B->cols,
+		c = array_A->rows == 1,
+		d = array_A->cols == 1,
+		e = array_B->rows == 1,
+		f = array_B->cols == 1;
+	if ( !( (a && b) || (b && c) || (a && d) || (b && e) || (a && f) ) )
+	{
+		PyErr_SetString(PyExc_TypeError, "Incompatible arrays. Element-wise can be done "
+										 "only if the two arrays are compatibles, i.e., "
+										 "if both have the same dimensions or at least one "
+										 "equivalent dimension when the other is one.");
+		return NULL;
+	}
+
+	Py_ssize_t i, j;
+	Py_ssize_t rows = (array_A->rows >= array_B->rows) ? array_A->rows : array_B->rows;
+	Py_ssize_t cols = (array_A->cols >= array_B->cols) ? array_A->cols : array_B->cols;	
+
+	xparrayObject *ret_array = PyXParray_New(rows, cols);
+
+	for (i = 0; i < rows; i++)
+	{
+		for (j = 0; j < cols; j++)
+		{
+			ret_array->data[i][j] = array_A->data[i * !c][j * !d] - array_B->data[i * !e][j * !f];
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+static PyObject *
+xparray_mul(PyObject *A, PyObject *B)
+{
+	double scalar;
+
+	int A_scalar_flag = PyNumber_Check(A),
+		B_scalar_flag = PyNumber_Check(B);
+
+	if ((PyXParray_Check(A) && (A_scalar_flag != 1)) || (B_scalar_flag != 1 && PyXParray_Check(B)))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide two xnl arrays or one xnl array and a number.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array_A = NULL, *array_B = NULL;
+
+	if (A_scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(A));
+		array_B = (xparrayObject *) B;
+
+		array_A = PyXParray_New(array_B->rows, array_B->cols);
+
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_B->rows; i++)
+		{
+			for (j = 0; j < array_B->cols; j++)
+			{
+				array_A->data[i][j] = scalar * array_B->data[i][j];
+			}
+		}
+
+		return (PyObject *) array_A;
+	}
+
+	if (B_scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(B));
+		array_A = (xparrayObject *) A;
+
+		array_B = PyXParray_New(array_A->rows, array_A->cols);
+
+		Py_ssize_t i, j;
+
+		for (i = 0; i < array_A->rows; i++)
+		{
+			for (j = 0; j < array_A->cols; j++)
+			{
+				array_B->data[i][j] = array_A->data[i][j] * scalar;
+			}
+		}
+
+		return (PyObject *) array_B;
+	}
+
+	array_A = (xparrayObject *) A;
+	array_B = (xparrayObject *) B;
+
+	/*Check if the element-wise operation can be done*/
+	/**
+	 * The two input xparrays must have compatible sizes (same dimensions or one of them = 1)
+	 *
+	 * Ex: 4x4 and 4x1 --> 4x4
+	 *     1x2 and 3x5 --> incompatible
+	 *     1x2 and 2x5 --> incompatible
+	 *     2x1 and 2x5 --> 2x5
+	 *
+	 *  A->rows == B->rows or A->cols == B->cols when one dim of A and/or B = 1
+	 *  dim(A) = dim(B)
+	 */
+	int a = array_A->rows == array_B->rows, 
+		b = array_A->cols == array_B->cols,
+		c = array_A->rows == 1,
+		d = array_A->cols == 1,
+		e = array_B->rows == 1,
+		f = array_B->cols == 1;
+	if ( !( (a && b) || (b && c) || (a && d) || (b && e) || (a && f) ) )
+	{
+		PyErr_SetString(PyExc_TypeError, "Incompatible arrays. Element-wise can be done "
+										 "only if the two arrays are compatibles, i.e., "
+										 "if both have the same dimensions or at least one "
+										 "equivalent dimension when the other is one.");
+		return NULL;
+	}
+
+	Py_ssize_t i, j;
+	Py_ssize_t rows = (array_A->rows >= array_B->rows) ? array_A->rows : array_B->rows;
+	Py_ssize_t cols = (array_A->cols >= array_B->cols) ? array_A->cols : array_B->cols;	
+
+	xparrayObject *ret_array = PyXParray_New(rows, cols);
+
+	for (i = 0; i < rows; i++)
+	{
+		for (j = 0; j < cols; j++)
+		{
+			ret_array->data[i][j] = array_A->data[i * !c][j * !d] * array_B->data[i * !e][j * !f];
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+static PyObject *
+xparray_matrix_mul(PyObject *A, PyObject *B)
+{
+	if (PyXParray_Check(A) || PyXParray_Check(B))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide two xparrays.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array_A = (xparrayObject *) A, 
+				  *array_B = (xparrayObject *) B;
+
+	/*Check if the multiplication can be done*/
+	if (array_A->cols != array_B->rows)
+	{
+		PyErr_SetString(PyExc_TypeError, "The number of columns of A must be equal to the number of rows of B.");
+		return NULL;
 	}
 
 	/*Passed, initialize a new array with zeros*/
 
-	int i, j;
-	int rows = (A_scalar_flag == 1) ? array_B->rows : array_A->rows;
-	int cols = (B_scalar_flag == 1) ? array_A->cols : array_B->cols;
+	Py_ssize_t i, j;
+	Py_ssize_t rows = array_A->rows;
+	Py_ssize_t cols = array_B->cols;
 
 	PyObject *argList = PyTuple_New(rows);
 
@@ -337,22 +639,15 @@ static PyObject *xparray_mul(PyObject *A, PyObject *B)
 	}
 
 	/*Success on the creation, then do the multiplication*/
-	int k;
+	Py_ssize_t k;
 
 	for (i = 0; i < rows; i++)
 	{
 		for (j = 0; j < cols; j++)
 		{
-			if (!A_scalar_flag && !B_scalar_flag)
+			for (k = 0; k < array_B->rows; k++)
 			{
-				for (k = 0; k < array_B->rows; k++)
-				{
-					ret_array->data[i][j] += array_A->data[i][k] * array_B->data[k][j];
-				}
-			}
-			else
-			{
-				ret_array->data[i][j] += (A_scalar_flag == 1) ? array_A->data[0][0] * array_B->data[i][j] : array_A->data[i][j] * array_B->data[0][0];
+				ret_array->data[i][j] += array_A->data[i][k] * array_B->data[k][j];
 			}
 		}
 	}
@@ -366,274 +661,44 @@ static PyObject *xparray_mul(PyObject *A, PyObject *B)
 	return (PyObject *) ret_array;
 }
 
-static PyObject *xparray_add(PyObject *A, PyObject *B)
-{
-	double scalar;
-
-	int A_scalar_flag = PyNumber_Check(A),
-		B_scalar_flag = PyNumber_Check(B);
-
-	if ((PyXParray_Check(A) && (A_scalar_flag != 1)) || (B_scalar_flag != 1 && PyXParray_Check(B)))
-	{
-		PyErr_SetString(PyExc_TypeError, "You must provide two xnl arrays or one xnl array and a number.\n");
-		return NULL;
-	}
-
-	/*Passed*/
-	xparrayObject *array_A = NULL, *array_B = NULL;
-
-	if (A_scalar_flag == 1)
-	{
-		scalar = PyFloat_AsDouble(PyNumber_Float(A));
-
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
-
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
-		{
-			return NULL;
-		}
-
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_A = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_B = (xparrayObject *) B;
-	}
-	else if (B_scalar_flag == 1)
-	{
-		scalar = PyFloat_AsDouble(PyNumber_Float(B));
-
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
-
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
-		{
-			return NULL;
-		}
-
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_B = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_A = (xparrayObject *) A;	
-	}
-	else /*arrays multiplication*/
-	{
-		array_A = (xparrayObject *) A;
-		array_B = (xparrayObject *) B;
-
-		/*Check if the multiplication can be done*/
-		if (array_A->rows != array_B->rows || array_A->cols != array_B->cols)
-		{
-			PyErr_SetString(PyExc_TypeError, "The parameters A and B must have the same dimensions to perform addition.\n");
-			return NULL;
-		}
-	}
-
-	/*Passed, initialize a new array with zeros*/
-
-	int i, j;
-	int rows = (A_scalar_flag == 1) ? array_B->rows : array_A->rows;
-	int cols = (B_scalar_flag == 1) ? array_A->cols : array_B->cols;
-
-	PyObject *argList = PyTuple_New(rows);
-
-	for (i = 0; i < rows; i++)
-	{
-		PyObject *temp = PyList_New(cols);
-
-		for (j = 0; j < cols; j++)
-		{
-			PyObject *zero = PyLong_FromLong(0);
-
-			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
-			{
-				return NULL;
-			}
-		}
-
-		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
-	}
-
-	/*call the array object*/
-	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-
-	Py_DECREF(argList);
-
-	if (ret_array == NULL)
-	{
-		/*Will print the messages from xparray*/
-		return NULL;
-	}
-
-	/*Success on the creation, then do the addition*/
-	for (i = 0; i < ret_array->rows; i++)
-	{
-		for (j = 0; j < ret_array->cols; j++)
-		{
-			ret_array->data[i][j] = array_A->data[i*(!A_scalar_flag)][j*(!A_scalar_flag)] + array_B->data[i*(!B_scalar_flag)][j*(!B_scalar_flag)];
-		}
-	}
-
-	return (PyObject *) ret_array;
-}
-
-static PyObject *xparray_sub(PyObject *A, PyObject *B)
-{
-	double scalar;
-
-	int A_scalar_flag = PyNumber_Check(A),
-		B_scalar_flag = PyNumber_Check(B);
-
-	if ((PyXParray_Check(A) && (A_scalar_flag != 1)) || (B_scalar_flag != 1 && PyXParray_Check(B)))
-	{
-		PyErr_SetString(PyExc_TypeError, "You must provide two xnl arrays or one xnl array and a number.\n");
-		return NULL;
-	}
-
-	/*Passed*/
-	xparrayObject *array_A = NULL, *array_B = NULL;
-
-	if (A_scalar_flag == 1)
-	{
-		scalar = PyFloat_AsDouble(PyNumber_Float(A));
-
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
-
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
-		{
-			return NULL;
-		}
-
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_A = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_B = (xparrayObject *) B;
-	}
-	else if (B_scalar_flag == 1)
-	{
-		scalar = PyFloat_AsDouble(PyNumber_Float(B));
-
-		/*Now create the array ([scalar])*/
-		PyObject *argList = PyTuple_New(1);
-		PyObject *temp = PyList_New(1);
-		PyObject *py_scalar = PyFloat_FromDouble(scalar);
-
-		if (PyList_SetItem(temp, 0, py_scalar) == -1) /*steals the reference of py_scalar*/
-		{
-			return NULL;
-		}
-
-		PyTuple_SetItem(argList, 0, temp); /*steals the reference of temp*/
-
-		array_B = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-		array_A = (xparrayObject *) A;	
-	}
-	else /*arrays multiplication*/
-	{
-		array_A = (xparrayObject *) A;
-		array_B = (xparrayObject *) B;
-
-		/*Check if the multiplication can be done*/
-		if (array_A->rows != array_B->rows || array_A->cols != array_B->cols)
-		{
-			PyErr_SetString(PyExc_TypeError, "The parameters A and B must have the same dimensions to perform addition.\n");
-			return NULL;
-		}
-	}
-
-	/*Passed, initialize a new array with zeros*/
-
-	int i, j;
-	int rows = (A_scalar_flag == 1) ? array_B->rows : array_A->rows;
-	int cols = (B_scalar_flag == 1) ? array_A->cols : array_B->cols;
-
-	PyObject *argList = PyTuple_New(rows);
-
-	for (i = 0; i < rows; i++)
-	{
-		PyObject *temp = PyList_New(cols);
-
-		for (j = 0; j < cols; j++)
-		{
-			PyObject *zero = PyLong_FromLong(0);
-
-			if (PyList_SetItem(temp, j, zero) == -1) /*steals the reference of zero*/
-			{
-				return NULL;
-			}
-		}
-
-		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
-	}
-
-	/*call the array object*/
-	xparrayObject *ret_array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
-
-	Py_DECREF(argList);
-
-	if (ret_array == NULL)
-	{
-		/*Will print the messages from xparray*/
-		return NULL;
-	}
-
-	/*Success on the creation, then do the subtraction*/
-	for (i = 0; i < ret_array->rows; i++)
-	{
-		for (j = 0; j < ret_array->cols; j++)
-		{
-			ret_array->data[i][j] = array_A->data[i*(!A_scalar_flag)][j*(!A_scalar_flag)] - array_B->data[i*(!B_scalar_flag)][j*(!B_scalar_flag)];
-		}
-	}
-
-	return (PyObject *) ret_array;
-}
-
 static PyNumberMethods xparray_as_number = 
 {
-	xparray_add,          /*nb_add*/
-    xparray_sub,          /*nb_subtract*/
-    xparray_mul,          /*nb_multiply*/
-    0, 					/*nb_divide*/
-    0,          		/*nb_remainder*/
-    0,       			/*nb_divmod*/
-    0,          		/*nb_power*/
-    0, 					/*nb_negative*/
-    0, 					/*nb_positive*/
-    0, 					/*nb_absolute*/
-    0, 					/*nb_nonzero*/
-    0,                  /*nb_invert*/
-    0,                  /*nb_lshift*/
-    0,                  /*nb_rshift*/
-    0,                  /*nb_and*/
-    0,                  /*nb_xor*/
-    0,                  /*nb_or*/
-    0,       			/*nb_coerce*/
-    0,        			/*nb_int*/
-    0,         			/*nb_long*/
-    0,        			/*nb_float*/
-    0,                  /* nb_oct */
-    0,                  /* nb_hex */
-    0,                  /* nb_inplace_add */
-    0,                  /* nb_inplace_subtract */
-    0,                  /* nb_inplace_multiply */
-    0,                  /* nb_inplace_divide */
-    0,                  /* nb_inplace_remainder */
-    0,                  /* nb_inplace_power */
-    0,                  /* nb_inplace_lshift */
-    0,                  /* nb_inplace_rshift */
-    0,                  /* nb_inplace_and */
-    0,                  /* nb_inplace_xor */
-    0,                  /* nb_inplace_or */
-    0, 					/* nb_floor_divide */
-    0,          		/* nb_true_divide */
+	(binaryfunc) xparray_add,          /* binaryfunc nb_add; */
+    (binaryfunc) xparray_sub,          /* binaryfunc nb_subtract; */
+    (binaryfunc) xparray_mul,          /* binaryfunc nb_multiply; */
+    0,          		/* binaryfunc nb_remainder; */
+    0,       			/* binaryfunc nb_divmod; */
+    0,          		/* ternaryfunc nb_power; */
+    0, 					/* unaryfunc nb_negative; */
+    0, 					/* unaryfunc nb_positive; */
+    0, 					/* unaryfunc nb_absolute; */
+    0, 					/* inquiry nb_bool; */
+    0,                  /* unaryfunc nb_invert; */
+    0,                  /* binaryfunc nb_lshift; */
+    0,                  /* binaryfunc nb_rshift; */
+    0,                  /* binaryfunc nb_and; */
+    0,                  /* binaryfunc nb_xor; */
+    0,                  /* binaryfunc nb_or; */
+    0,        			/* unaryfunc nb_int; */
+    0,         			/* void *nb_reserved;  the slot formerly known as nb_long */
+    0,        			/* unaryfunc nb_float; */
+    0,                  /* binaryfunc nb_inplace_add; */
+    0,                  /* binaryfunc nb_inplace_subtract; */
+    0,                  /* binaryfunc nb_inplace_multiply; */
+    0,                  /* binaryfunc nb_inplace_remainder; */
+    0,                  /* ternaryfunc nb_inplace_power; */
+    0,                  /* binaryfunc nb_inplace_lshift; */
+    0,                  /* binaryfunc nb_inplace_rshift; */
+    0,                  /* binaryfunc nb_inplace_and; */
+    0,                  /* binaryfunc nb_inplace_xor; */
+    0,                  /* binaryfunc nb_inplace_or; */
+    0, 					/* binaryfunc nb_floor_divide; */
+    0,					/* binaryfunc nb_true_divide; */
+    0,					/* binaryfunc nb_inplace_floor_divide; */
+    0,          		/* binaryfunc nb_inplace_true_divide; */
+    0, 					/* unaryfunc nb_index; */
+    (binaryfunc) xparray_matrix_mul, 					/* binaryfunc nb_matrix_multiply; */
+    0,					/* binaryfunc nb_inplace_matrix_multiply; */
 };
 
 /**

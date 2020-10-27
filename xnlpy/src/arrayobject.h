@@ -60,4 +60,6 @@ PyTypeObject xparrayType;
 
 #define PyXParray_Check(obj) (strcmp(obj->ob_type->tp_name, "xnlpy.array"))
 
+xparrayObject *PyXParray_New(Py_ssize_t rows, Py_ssize_t cols);
+
 #endif /*ARRAYOBJECT_H*/

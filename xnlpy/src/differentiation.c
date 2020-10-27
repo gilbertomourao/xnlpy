@@ -129,7 +129,7 @@ static double diff_callback(double callback)
 }
 
 /* function to be called externally */
-PyObject *py_diff(PyObject *self, PyObject *args, PyObject *kwargs)
+PyObject *PyXP_Diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	/*arguments*/
 	double x;

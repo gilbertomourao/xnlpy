@@ -21,7 +21,7 @@ name will appear in the acknowledgments (README.md).
 
 #include "xnl.h"
 
-xparrayObject *py_zeros(PyObject *self, PyObject *args)
+xparrayObject *PyXP_Zeros(PyObject *self, PyObject *args)
 {
 	int rows, cols;
 	if (!PyArg_ParseTuple(args, "ii", &rows, &cols))
@@ -72,7 +72,7 @@ xparrayObject *py_zeros(PyObject *self, PyObject *args)
 	return array;
 }
 
-xparrayObject *py_ones(PyObject *self, PyObject *args)
+xparrayObject *PyXP_Ones(PyObject *self, PyObject *args)
 {
 	int rows, cols;
 	if (!PyArg_ParseTuple(args, "ii", &rows, &cols))
@@ -131,7 +131,7 @@ xparrayObject *py_ones(PyObject *self, PyObject *args)
 	return array;
 }
 
-xparrayObject *py_eye(PyObject *self, PyObject *args)
+xparrayObject *PyXP_Eye(PyObject *self, PyObject *args)
 {
 	int size;
 	if (!PyArg_ParseTuple(args, "i", &size))
@@ -190,7 +190,7 @@ xparrayObject *py_eye(PyObject *self, PyObject *args)
 	return array;
 }
 
-xparrayObject *py_transpose(PyObject *self, PyObject *args)
+xparrayObject *PyXP_Transpose(PyObject *self, PyObject *args)
 {
 	PyObject *arg_A = NULL;
 

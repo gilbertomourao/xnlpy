@@ -23,14 +23,14 @@ name will appear in the acknowledgments (README.md).
 
 static PyMethodDef xnl_methods[] = 
 {
-	{"zeros", (PyCFunction) py_zeros, METH_VARARGS, "Zero array creation"},
-	{"ones", (PyCFunction) py_ones, METH_VARARGS, "Unity array creation"},
-	{"eye", (PyCFunction) py_eye, METH_VARARGS, "Identity matrix creation"},
-	{"transpose", (PyCFunction) py_transpose, METH_VARARGS, "Array transpose"},
-	{"GaussElimination", (PyCFunction) py_GaussElimination, METH_VARARGS | METH_KEYWORDS, "Gauss Elimination"},
-	{"fsolve", (PyCFunction) py_fsolve, METH_VARARGS | METH_KEYWORDS, "Numerical root finder for nonlinear function"},
-	{"diff", (PyCFunction) py_diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
-	{"integral", (PyCFunction) py_integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
+	{"zeros", (PyCFunction) PyXP_Zeros, METH_VARARGS, "Zero array creation"},
+	{"ones", (PyCFunction) PyXP_Ones, METH_VARARGS, "Unity array creation"},
+	{"eye", (PyCFunction) PyXP_Eye, METH_VARARGS, "Identity matrix creation"},
+	{"transpose", (PyCFunction) PyXP_Transpose, METH_VARARGS, "Array transpose"},
+	{"GaussElimination", (PyCFunction) PyXP_GaussElimination, METH_VARARGS | METH_KEYWORDS, "Gauss Elimination"},
+	{"fsolve", (PyCFunction) PyXP_Fsolve, METH_VARARGS | METH_KEYWORDS, "Numerical root finder for nonlinear function"},
+	{"diff", (PyCFunction) PyXP_Diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
+	{"integral", (PyCFunction) PyXP_Integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };
 
