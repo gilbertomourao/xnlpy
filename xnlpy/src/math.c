@@ -80,6 +80,60 @@ PyObject *PyXP_Acos(PyObject *self, PyObject *args)
 
 /**
  * 
+ * acosg function
+ * 
+ */
+PyObject *PyXP_Acosh(PyObject *self, PyObject *args)
+{
+	double scalar;
+	PyObject *arg = NULL;
+
+	if (!PyArg_ParseTuple(args,"O", &arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(arg);
+
+	if (PyXParray_Check(arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide a xnl array or a number as argument.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(arg));
+		
+		return Py_BuildValue("d", acosh(scalar));
+	}
+
+	/*xnl array as argument*/
+
+	array = (xparrayObject *) arg;
+
+	xparrayObject *ret_array = NULL;
+
+	ret_array = PyXParray_New(array->rows, array->cols);
+
+	Py_ssize_t i, j;
+
+	for (i = 0; i < array->rows; i++)
+	{
+		for (j = 0; j < array->cols; j++)
+		{
+			ret_array->data[i][j] = acosh(array->data[i][j]);
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+/**
+ * 
  * asin function
  * 
  */
@@ -134,6 +188,60 @@ PyObject *PyXP_Asin(PyObject *self, PyObject *args)
 
 /**
  * 
+ * asinh function
+ * 
+ */
+PyObject *PyXP_Asinh(PyObject *self, PyObject *args)
+{
+	double scalar;
+	PyObject *arg = NULL;
+
+	if (!PyArg_ParseTuple(args,"O", &arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(arg);
+
+	if (PyXParray_Check(arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide a xnl array or a number as argument.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(arg));
+		
+		return Py_BuildValue("d", asinh(scalar));
+	}
+
+	/*xnl array as argument*/
+
+	array = (xparrayObject *) arg;
+
+	xparrayObject *ret_array = NULL;
+
+	ret_array = PyXParray_New(array->rows, array->cols);
+
+	Py_ssize_t i, j;
+
+	for (i = 0; i < array->rows; i++)
+	{
+		for (j = 0; j < array->cols; j++)
+		{
+			ret_array->data[i][j] = asinh(array->data[i][j]);
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+/**
+ * 
  * atan function
  * 
  */
@@ -180,6 +288,60 @@ PyObject *PyXP_Atan(PyObject *self, PyObject *args)
 		for (j = 0; j < array->cols; j++)
 		{
 			ret_array->data[i][j] = atan(array->data[i][j]);
+		}
+	}
+
+	return (PyObject *) ret_array;
+}
+
+/**
+ * 
+ * atanh function
+ * 
+ */
+PyObject *PyXP_Atanh(PyObject *self, PyObject *args)
+{
+	double scalar;
+	PyObject *arg = NULL;
+
+	if (!PyArg_ParseTuple(args,"O", &arg))
+	{
+		return NULL;
+	}
+
+	int scalar_flag = PyNumber_Check(arg);
+
+	if (PyXParray_Check(arg) && (scalar_flag != 1))
+	{
+		PyErr_SetString(PyExc_TypeError, "You must provide a xnl array or a number as argument.\n");
+		return NULL;
+	}
+
+	/*Passed*/
+	xparrayObject *array = NULL;
+
+	if (scalar_flag == 1)
+	{
+		scalar = PyFloat_AsDouble(PyNumber_Float(arg));
+		
+		return Py_BuildValue("d", atanh(scalar));
+	}
+
+	/*xnl array as argument*/
+
+	array = (xparrayObject *) arg;
+
+	xparrayObject *ret_array = NULL;
+
+	ret_array = PyXParray_New(array->rows, array->cols);
+
+	Py_ssize_t i, j;
+
+	for (i = 0; i < array->rows; i++)
+	{
+		for (j = 0; j < array->cols; j++)
+		{
+			ret_array->data[i][j] = atanh(array->data[i][j]);
 		}
 	}
 

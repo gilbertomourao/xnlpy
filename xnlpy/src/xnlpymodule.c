@@ -24,8 +24,11 @@ name will appear in the acknowledgments (README.md).
 static PyMethodDef xnl_methods[] = 
 {
 	{"acos", (PyCFunction) PyXP_Acos, METH_VARARGS, "acos computation"},
+	{"acosh", (PyCFunction) PyXP_Acosh, METH_VARARGS, "acosh computation"},
 	{"asin", (PyCFunction) PyXP_Asin, METH_VARARGS, "asin computation"},
+	{"asinh", (PyCFunction) PyXP_Asinh, METH_VARARGS, "asinh computation"},
 	{"atan", (PyCFunction) PyXP_Atan, METH_VARARGS, "atan computation"},
+	{"atanh", (PyCFunction) PyXP_Atanh, METH_VARARGS, "atanh computation"},
 	{"cos", (PyCFunction) PyXP_Cos, METH_VARARGS, "cos computation"},
 	{"cosh", (PyCFunction) PyXP_Cosh, METH_VARARGS, "cosh computation"},
 	{"sin", (PyCFunction) PyXP_Sin, METH_VARARGS, "sin computation"},

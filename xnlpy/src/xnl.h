@@ -34,8 +34,11 @@ name will appear in the acknowledgments (README.md).
 
 /*Basic Math*/
 PyObject *PyXP_Acos(PyObject *, PyObject *);
+PyObject *PyXP_Acosh(PyObject *, PyObject *);
 PyObject *PyXP_Asin(PyObject *, PyObject *);
+PyObject *PyXP_Asinh(PyObject *, PyObject *);
 PyObject *PyXP_Atan(PyObject *, PyObject *);
+PyObject *PyXP_Atanh(PyObject *, PyObject *);
 PyObject *PyXP_Cos(PyObject *, PyObject *);
 PyObject *PyXP_Cosh(PyObject *, PyObject *);
 PyObject *PyXP_Sin(PyObject *, PyObject *);
