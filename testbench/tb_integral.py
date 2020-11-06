@@ -1,5 +1,4 @@
 import xnlpy as xp
-import math as m
 #from timeit import default_timer as timer
 #import statistics
 import matplotlib.pyplot as plt
@@ -62,14 +61,14 @@ def plot_integral_analysis(number, true_val, begin, func, a, b, **kwargs):
 
 print("###Integrating the first function...\n")
 
-phi = (1 + m.sqrt(5)) / 2
-acot = lambda x: m.pi/2 - m.atan(x)
-true_res = 4 * m.pi * acot(m.sqrt(phi))
+phi = (1 + xp.sqrt(5)) / 2
+acot = lambda x: xp.pi/2 - xp.atan(x)
+true_res = 4 * xp.pi * acot(xp.sqrt(phi))
 
 a = 0
-b = m.pi
+b = xp.pi
 
-func = lambda x: m.tan(x) / m.tan(x/2) * m.log((2*m.cos(x)**2 + 2*m.cos(x) + 1) / (2*m.cos(x)**2 - 2*m.cos(x) + 1))
+func = lambda x: xp.tan(x) / xp.tan(x/2) * xp.log((2*xp.cos(x)**2 + 2*xp.cos(x) + 1) / (2*xp.cos(x)**2 - 2*xp.cos(x) + 1))
 
 [result, error] = xp.integral(func, a, b, points=15)
 
@@ -81,12 +80,12 @@ plot_integral_analysis(1, true_res, 3, func, a, b, points=100)
 
 print("\n###Integrating the second function...\n")
 
-true_res = (m.pi / 8) * m.log(m.pi**2 / 8)
+true_res = (xp.pi / 8) * xp.log(xp.pi**2 / 8)
 
 a = 0
 b = 1
 
-func = lambda x: m.atan( (m.atanh(x) - m.atan(x)) / (m.pi + m.atanh(x) - m.atan(x)) ) / x
+func = lambda x: xp.atan( (xp.atanh(x) - xp.atan(x)) / (xp.pi + xp.atanh(x) - xp.atan(x)) ) / x
 
 [result, error] = xp.integral(func, a, b, points=10, tolerance=1e-15, depth=50)
 
@@ -98,10 +97,10 @@ plot_integral_analysis(2, true_res, 3, func, a, b, points=100, tolerance=1e-15, 
 
 print("\n###Integrating the third function...\n")
 
-true_res = m.pi / 2
+true_res = xp.pi / 2
 
 a = 0
-b = m.inf
+b = xp.inf
 
 func = lambda x: (x**8 - 4*x**6 + 9*x**4 - 5*x**2 + 1) / (x**12 - 10*x**10 + 37*x**8 - 42*x**6 + 26*x**4 - 8*x**2 + 1)
 

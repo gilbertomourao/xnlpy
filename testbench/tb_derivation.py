@@ -1,8 +1,7 @@
 import xnlpy as xp
-import math as m 
 
-func = lambda x: m.sin(x)
-realvalue = m.cos(2.3)
+func = lambda x: xp.sin(x)
+realvalue = xp.cos(2.3)
 
 print('Real value: ', realvalue)
 
