@@ -26,9 +26,6 @@ name will appear in the acknowledgments (README.md).
 #include <math.h>
 #include <string.h>
 
-#define XNL_INFINITY HUGE_VAL
-#define XNL_NAN (0.0f / 0.0f)
-
 /**********************************************
 * MATLAB array functions
 ***********************************************/
@@ -111,14 +108,11 @@ static void GLR_compute_start(int n, double *p, double *pp)
 
 static void GLR_compute_first_root(double *p, double *roots, double *weights, int n)
 {
-	const double pi = 3.14159265358979323846;
-	const double eps = 2.220446049250313e-16;
-
 	/* Francesco Tricomi formula */
 	int k = (n / 2) + (n % 2);
 	double dk = (double) k;
 	double dn = (double) n;
-	double theta = pi * (4 * dk - 1.0) / (4 * dn + 2.0);
+	double theta = XNL_PI * (4 * dk - 1.0) / (4 * dn + 2.0);
 	double sine = sin(theta);
 	double cosine = cos(theta);
 	double x1 = (1.0 - (dn - 1) / (8*dn*dn*dn) - 1.0 / (384*dn*dn*dn*dn) * (39.0 - 28.0 / (sine * sine))) * cosine;
@@ -179,7 +173,7 @@ static void GLR_compute_first_root(double *p, double *roots, double *weights, in
 
 	/* Newton iteration */
 
-	while (eps < fabs(step) && l < 10)
+	while (XNL_EPS < fabs(step) && l < 10)
 	{
 		l += 1;
 		step = inner_prod(u,x1k,m+1) / inner_prod(up,x1k,m+1);
@@ -201,9 +195,6 @@ static void GLR_compute_first_root(double *p, double *roots, double *weights, in
 
 static void GLR_compute_all(double *roots, double *weights, int n)
 {
-	const double pi = 3.14159265358979323846;
-	const double eps = 2.220446049250313e-16;
-
 	int N;
 	int s;
 	int k;
@@ -274,7 +265,7 @@ static void GLR_compute_all(double *roots, double *weights, int n)
 	for ( k = (n-2+s)/2 ; k ; k-- )
 	{
 		dk = (double) k;
-		theta = pi * (4 * dk - 1.0) / (4 * dn + 2.0);
+		theta = XNL_PI * (4 * dk - 1.0) / (4 * dn + 2.0);
 		sine = sin(theta);
 		cosine = cos(theta);
 		roots[n - k] = (1.0 - (dn - 1.0) / (8*dn*dn*dn) - 1.0 / (384*dn*dn*dn*dn) * (39.0 - 28.0 / (sine * sine))) * cosine;
@@ -332,7 +323,7 @@ static void GLR_compute_all(double *roots, double *weights, int n)
 		step = 1.0;
 		l = 0;
 
-		while (eps < fabs(step) && l < 10)
+		while (XNL_EPS < fabs(step) && l < 10)
 		{
 			l += 1;
 			step = inner_prod(u,hh,m+1) / inner_prod(up,hh,m+1);
@@ -545,7 +536,6 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
                			   int remaining_it, /* maximum number of iterations per division */
                			   double* error) /* stores the error value */
 {
-	const double pi = 3.14159265358979323846;
     double retval; /* Control variable */
 
     double est_error = 0; /* Estimated error */
@@ -583,10 +573,10 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
         {
             if (a > 0)
             {
-                a = pi/2;
+                a = XNL_PI/2;
             } else 
             {
-                a = -pi/2;
+                a = -XNL_PI/2;
             }
         }
         else
@@ -598,10 +588,10 @@ static double xnl_integral(double (*f)(double), /* function to integrate */
         {
             if (b > 0)
             {
-                b = pi/2;
+                b = XNL_PI/2;
             } else 
             {
-                b = -pi/2;
+                b = -XNL_PI/2;
             }
         }
         else

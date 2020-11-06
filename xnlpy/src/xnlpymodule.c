@@ -23,14 +23,37 @@ name will appear in the acknowledgments (README.md).
 
 static PyMethodDef xnl_methods[] = 
 {
+	{"acos", (PyCFunction) PyXP_Acos, METH_VARARGS, "acos computation"},
+	{"asin", (PyCFunction) PyXP_Asin, METH_VARARGS, "asin computation"},
+	{"atan", (PyCFunction) PyXP_Atan, METH_VARARGS, "atan computation"},
+	{"cos", (PyCFunction) PyXP_Cos, METH_VARARGS, "cos computation"},
+	{"cosh", (PyCFunction) PyXP_Cosh, METH_VARARGS, "cosh computation"},
+	{"sin", (PyCFunction) PyXP_Sin, METH_VARARGS, "sin computation"},
+	{"sinh", (PyCFunction) PyXP_Sinh, METH_VARARGS, "sinh computation"},
+	{"tan", (PyCFunction) PyXP_Tan, METH_VARARGS, "tan computation"},
+	{"tanh", (PyCFunction) PyXP_Tanh, METH_VARARGS, "tanh computation"},
+	{"exp", (PyCFunction) PyXP_Exp, METH_VARARGS, "exp computation"},
+	{"log", (PyCFunction) PyXP_Log, METH_VARARGS, "log computation"},
+	{"log10", (PyCFunction) PyXP_Log10, METH_VARARGS, "log10 computation"},
+	{"sqrt", (PyCFunction) PyXP_Sqrt, METH_VARARGS, "sqrt computation"},
+	{"ceil", (PyCFunction) PyXP_Ceil, METH_VARARGS, "ceil computation"},
+	{"fabs", (PyCFunction) PyXP_Fabs, METH_VARARGS, "fabs computation"},
+	{"floor", (PyCFunction) PyXP_Floor, METH_VARARGS, "floor computation"},
+	
+
 	{"zeros", (PyCFunction) PyXP_Zeros, METH_VARARGS, "Zero array creation"},
 	{"ones", (PyCFunction) PyXP_Ones, METH_VARARGS, "Unity array creation"},
 	{"eye", (PyCFunction) PyXP_Eye, METH_VARARGS, "Identity matrix creation"},
 	{"transpose", (PyCFunction) PyXP_Transpose, METH_VARARGS, "Array transpose"},
 	{"GaussElimination", (PyCFunction) PyXP_GaussElimination, METH_VARARGS | METH_KEYWORDS, "Gauss Elimination"},
+	
+
 	{"fsolve", (PyCFunction) PyXP_Fsolve, METH_VARARGS | METH_KEYWORDS, "Numerical root finder for nonlinear function"},
+	
+	
 	{"diff", (PyCFunction) PyXP_Diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
 	{"integral", (PyCFunction) PyXP_Integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
+	
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };
 
@@ -60,6 +83,42 @@ PyMODINIT_FUNC PyInit_xnlpy(void)
 	if (PyModule_AddObject(m, "array", (PyObject *) &xparrayType) < 0)
 	{
 		Py_DECREF(&xparrayType);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	PyObject *pi = Py_BuildValue("d", XNL_PI);
+
+	if (PyModule_AddObject(m, "pi", pi))
+	{
+		Py_DECREF(pi);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	PyObject *eps = Py_BuildValue("d", XNL_EPS);
+
+	if (PyModule_AddObject(m, "eps", eps))
+	{
+		Py_DECREF(eps);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	PyObject *inf = Py_BuildValue("d", XNL_INFINITY);
+
+	if (PyModule_AddObject(m, "inf", inf))
+	{
+		Py_DECREF(inf);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	PyObject *nan = Py_BuildValue("d", XNL_NAN);
+
+	if (PyModule_AddObject(m, "nan", nan))
+	{
+		Py_DECREF(nan);
 		Py_DECREF(m);
 		return NULL;
 	}

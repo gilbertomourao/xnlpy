@@ -26,6 +26,31 @@ name will appear in the acknowledgments (README.md).
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+/*Constants*/
+#define XNL_PI 3.14159265358979323846
+#define XNL_EPS 2.220446049250313e-16
+#define XNL_INFINITY HUGE_VAL
+#define XNL_NAN (0.0f / 0.0f)
+
+/*Basic Math*/
+PyObject *PyXP_Acos(PyObject *, PyObject *);
+PyObject *PyXP_Asin(PyObject *, PyObject *);
+PyObject *PyXP_Atan(PyObject *, PyObject *);
+PyObject *PyXP_Cos(PyObject *, PyObject *);
+PyObject *PyXP_Cosh(PyObject *, PyObject *);
+PyObject *PyXP_Sin(PyObject *, PyObject *);
+PyObject *PyXP_Sinh(PyObject *, PyObject *);
+PyObject *PyXP_Tan(PyObject *, PyObject *);
+PyObject *PyXP_Tanh(PyObject *, PyObject *);
+PyObject *PyXP_Exp(PyObject *, PyObject *);
+PyObject *PyXP_Log(PyObject *, PyObject *);
+PyObject *PyXP_Log10(PyObject *, PyObject *);
+PyObject *PyXP_Sqrt(PyObject *, PyObject *);
+PyObject *PyXP_Ceil(PyObject *, PyObject *);
+PyObject *PyXP_Fabs(PyObject *, PyObject *);
+PyObject *PyXP_Floor(PyObject *, PyObject *);
+
+
 /*Linear Algebra*/
 #include "arrayobject.h"
 
