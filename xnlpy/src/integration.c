@@ -581,7 +581,8 @@ static double xnl_integral(void (*f)(xparrayObject *, PyObject *, double *, int,
 
 	/* Set the first element of the tuple f_args to be the array argument (x) */
 	/* Insert a referente to arg_array at the position 0 */
-	PyTuple_SetItem(f_args, 0, (PyObject *) arg_array); /* steals the reference of arg_array */
+	if (f_args)
+		PyTuple_SetItem(f_args, 0, (PyObject *) arg_array); /* steals the reference of arg_array */
 
     double retval; /* Control variable */
 
@@ -692,7 +693,8 @@ static double xnl_integral(void (*f)(xparrayObject *, PyObject *, double *, int,
 
     if (error) *error = est_error;
 
-	/*Py_XDECREF(arg_array);*/ /* Not necessary since f_args owns the reference now */
+	if (!f_args)
+		Py_XDECREF(arg_array);
 
     return retval;
 }
