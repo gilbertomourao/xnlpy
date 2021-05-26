@@ -409,8 +409,9 @@ static void create(double *roots, double *weights, int Order)
 * of the integral using Gauss-Legendre quadrature
 *************************************************/
 
-static double GaussLegendre(void (*f)(xparrayObject *, double *, int, double *, double, double), 
+static double GaussLegendre(void (*f)(xparrayObject *, PyObject *, double *, int, double *, double, double), 
 							xparrayObject *arg_array,
+							PyObject *f_args, 
 							double *vec, 
 							double a, 
 							double b, 
@@ -423,7 +424,7 @@ static double GaussLegendre(void (*f)(xparrayObject *, double *, int, double *, 
     int i;
 
     /*Vectorized function*/
-    f(arg_array, vec, points, roots, c1, c2);
+    f(arg_array, f_args, vec, points, roots, c1, c2);
 
     for (i = 0; i < points; ++i) 
     {
@@ -452,8 +453,9 @@ static int src_isnan(double x)
     return x != x;
 }
 
-static double Adaptive_Quad(void (*f)(xparrayObject *, double *, int, double *, double, double), /* function to integrate */
+static double Adaptive_Quad(void (*f)(xparrayObject *, PyObject *, double *, int, double *, double, double), /* function to integrate */
                    	 		xparrayObject *arg_array,
+                   	 		PyObject *f_args, 
                    	 		double *vec, /*vector passed to the vectorized f function*/
                    	 		double a, /* left interval boundary */
                    	 		double b, /* right interval boundary */
@@ -476,8 +478,8 @@ static double Adaptive_Quad(void (*f)(xparrayObject *, double *, int, double *, 
 	    return XNL_NAN;
 	}
 
-	left = GaussLegendre(f, arg_array, vec, a, (a+b)/2, points, roots, weights); /* integrate over the left interval */
-	right = GaussLegendre(f, arg_array, vec, (a+b)/2, b, points, roots, weights); /* integrate over the right interval */
+	left = GaussLegendre(f, arg_array, f_args, vec, a, (a+b)/2, points, roots, weights); /* integrate over the left interval */
+	right = GaussLegendre(f, arg_array, f_args, vec, (a+b)/2, b, points, roots, weights); /* integrate over the right interval */
 
 	int_error = fabs(total - (left + right)); /* interval error */
 
@@ -491,7 +493,7 @@ static double Adaptive_Quad(void (*f)(xparrayObject *, double *, int, double *, 
 	else 
 	{
 		/* Computes the Left node */
-	    retvalL = Adaptive_Quad(f, arg_array, vec, a, (a + b)/2, points, left, tolerance, remaining_it - 1, error, roots, weights);
+	    retvalL = Adaptive_Quad(f, arg_array, f_args, vec, a, (a + b)/2, points, left, tolerance, remaining_it - 1, error, roots, weights);
 
 	    if (src_isnan(retvalL))
 	    {
@@ -503,7 +505,7 @@ static double Adaptive_Quad(void (*f)(xparrayObject *, double *, int, double *, 
 	    else 
 	    {
 	    	/* The left node is ok. Then the right node can be computed */
-	        retvalR = Adaptive_Quad(f, arg_array, vec, (a + b)/2, b, points, right, tolerance, remaining_it - 1, error, roots, weights);
+	        retvalR = Adaptive_Quad(f, arg_array, f_args, vec, (a + b)/2, b, points, right, tolerance, remaining_it - 1, error, roots, weights);
 
 	    	return retvalL + retvalR; /* returns the left + right nodes */
 	    }
@@ -514,9 +516,9 @@ static double Adaptive_Quad(void (*f)(xparrayObject *, double *, int, double *, 
 * Adaptive gaussian quadrature
 ***********************************************/
 
-static void (*func_pointer)(xparrayObject *, double *, int, double *, double, double);
+static void (*func_pointer)(xparrayObject *, PyObject *, double *, int, double *, double, double);
 
-static void g(xparrayObject *arg_array, double *vec, int points, double *roots, double c1, double c2)
+static void g(xparrayObject *arg_array, PyObject *f_args, double *vec, int points, double *roots, double c1, double c2)
 {
 	double *new_x = malloc(points * sizeof(double));
 
@@ -532,7 +534,7 @@ static void g(xparrayObject *arg_array, double *vec, int points, double *roots, 
 		new_x[i] = tan(c1*roots[i] + c2);
 	}
 
-	func_pointer(arg_array, vec, points, new_x, 1, 0); 
+	func_pointer(arg_array, f_args, vec, points, new_x, 1, 0); 
 
 	double cos_new_x;
 	for (i = 0; i < points; i++)
@@ -564,7 +566,8 @@ static void g(xparrayObject *arg_array, double *vec, int points, double *roots, 
  * the quadrature may not work well.
  */
 
-static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, double, double), /* function to integrate */
+static double xnl_integral(void (*f)(xparrayObject *, PyObject *, double *, int, double *, double, double), /* function to integrate */
+               	 		   PyObject *f_args, 
                	 		   double a, /* left interval boundary */
                			   double b, /* right interval boundary */
 						   int points, /* number of points for interpolation */
@@ -575,6 +578,10 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
 	xparrayObject *arg_array = NULL;
 
 	arg_array = PyXParray_New(1, points);
+
+	/* Set the first element of the tuple f_args to be the array argument (x) */
+	/* Insert a referente to arg_array at the position 0 */
+	PyTuple_SetItem(f_args, 0, (PyObject *) arg_array); /* steals the reference of arg_array */
 
     double retval; /* Control variable */
 
@@ -607,7 +614,7 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
 
     double total, left, right;
 
-    void (*func)(xparrayObject *, double *, int, double *, double, double);
+    void (*func)(xparrayObject *, PyObject *, double *, int, double *, double, double);
 
     func = f;
 
@@ -657,9 +664,9 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
     if (!tolerance) 
     { 
     	/* nonadaptive approach */
-        total = GaussLegendre(func, arg_array, vec, a, b, points, roots, weights);
-   		left = GaussLegendre(func, arg_array, vec, a, (a+b)/2, points, roots, weights);
-   		right = GaussLegendre(func, arg_array, vec, (a+b)/2, b, points, roots, weights);
+        total = GaussLegendre(func, arg_array, f_args, vec, a, b, points, roots, weights);
+   		left = GaussLegendre(func, arg_array, f_args, vec, a, (a+b)/2, points, roots, weights);
+   		right = GaussLegendre(func, arg_array, f_args, vec, (a+b)/2, b, points, roots, weights);
 
    		est_error = fabs(total - (left + right));
 
@@ -667,10 +674,10 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
     } 
     else /* adaptive approach */
     {
-    	total = GaussLegendre(func, arg_array, vec, a, b, points, roots, weights);
-        retval = Adaptive_Quad(func, arg_array, vec, a, b, points, total, tolerance, remaining_it, &est_error, roots, weights); 
+    	total = GaussLegendre(func, arg_array, f_args, vec, a, b, points, roots, weights);
+        retval = Adaptive_Quad(func, arg_array, f_args, vec, a, b, points, total, tolerance, remaining_it, &est_error, roots, weights); 
     }
-    
+
     /* Free memory */
 
     free(roots);
@@ -680,12 +687,12 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
     /* Check if the quadrature worked */
     if (src_isnan(retval))
     {
-        printf("ERROR: In xnl_integral. Numerical integration failed. Possibly because the integral is divergent.\n");
+        printf("WARNING: In xnl_integral. Numerical integration failed. Possibly because the integral is divergent.\n");
     }
 
     if (error) *error = est_error;
 
-	Py_XDECREF(arg_array);
+	/*Py_XDECREF(arg_array);*/ /* Not necessary since f_args owns the reference now */
 
     return retval;
 }
@@ -694,7 +701,8 @@ static double xnl_integral(void (*f)(xparrayObject *, double *, int, double *, d
 * Top level function
 ***********************************************/
 
-static double integral(void (*f)(xparrayObject *, double *, int, double *, double, double), 
+static double integral(void (*f)(xparrayObject *, PyObject *, double *, int, double *, double, double), 
+					   PyObject *f_args, 
 					   double a, 
 					   double b, 
 					   int points, 
@@ -730,7 +738,7 @@ static double integral(void (*f)(xparrayObject *, double *, int, double *, doubl
 		exit(EXIT_FAILURE);
 	}
 
-	return xnl_integral(f, a, b, points, tolerance, depth, error);
+	return xnl_integral(f, f_args, a, b, points, tolerance, depth, error);
 }
 
 /**********************************************
@@ -740,7 +748,8 @@ static double integral(void (*f)(xparrayObject *, double *, int, double *, doubl
 /*callback function*/
 
 /*
-double integral(void (*)(xparrayObject *, double *, int, double *, double, double),
+double integral(void (*)(xparrayObject *, PyObject *, double *, int, double *, double, double),
+				PyObject *, 
 				double,
 				double,
 				int, double, int,
@@ -749,9 +758,10 @@ double integral(void (*)(xparrayObject *, double *, int, double *, double, doubl
 
 static PyObject *int_cb_callable = NULL;
 
-/*Implementation of void (*func)(xparrayObject *, double *, int, double *, double, double)*/
+/*Implementation of void (*func)(xparrayObject *, PyObject *, double *, int, double *, double, double)*/
 
 static void int_callback(xparrayObject *arg_array,
+						 PyObject *f_args, 
 						 double *vec, 
 						 int points, 
 						 double *roots, 
@@ -766,7 +776,15 @@ static void int_callback(xparrayObject *arg_array,
 
     PyObject *ret_val;
 	/*Returns a reference to ret_val*/
-	ret_val = PyObject_CallFunctionObjArgs(int_cb_callable, (PyObject *) arg_array, NULL);
+	if (!f_args)
+	{
+		ret_val = PyObject_CallFunctionObjArgs(int_cb_callable, (PyObject *) arg_array, NULL);
+	}
+	else 
+	{
+		/* user_data available */
+		ret_val = PyObject_CallObject(int_cb_callable, f_args);
+	}
 
 	if (ret_val && !PyXParray_Check(ret_val))
 	{
@@ -780,9 +798,100 @@ static void int_callback(xparrayObject *arg_array,
 	else 
 	{
 		PyErr_SetString(PyExc_TypeError, "Callable object int: bad behavior");
+		Py_Exit(EXIT_FAILURE);
 	}
 
 	Py_XDECREF(ret_val);
+}
+
+/**
+ * Check if the args provided by the user are ok.
+ */
+static PyObject *check_args(PyObject *user_data)
+{
+	/**
+	 * Verifies if user_data must be used. This is the case 
+	 * when the function have more than one argument.
+	 *
+	 * To count the number of the callable arguments, refer to 
+	 * https://stackoverflow.com/questions/1117164/how-to-find-the-number-of-parameters-to-a-python-function-from-c
+	 */
+	unsigned count = 0;
+	PyObject *fc = PyObject_GetAttrString(int_cb_callable, "__code__");
+	if (fc)
+	{
+		PyObject *ac = PyObject_GetAttrString(fc, "co_argcount");
+		if (ac)
+		{
+			count = PyLong_AsLong(ac);
+			Py_DECREF(ac);
+		}
+		Py_DECREF(fc);
+	}
+
+	if (count == 1 && user_data)
+	{
+		PyErr_SetString(PyExc_TypeError, 
+						"integral: args not available for this integrand. "
+						"It must have more than one argument.\n");
+		Py_Exit(EXIT_FAILURE);
+	}
+
+	if (count > 1 && !user_data)
+	{
+		PyErr_SetString(PyExc_TypeError, 
+						"integral: invalid number of arguments. The integrand "
+						"appears to have more than one argument, so you must "
+						"use \"args\" to pass the other arguments to it.\n");
+		Py_Exit(EXIT_FAILURE);
+	}
+
+	if (!user_data)
+		return NULL;
+
+	/* ensure the parameter args is a tuple */
+	if (!PyTuple_Check(user_data))
+	{
+		PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple\n");
+		Py_Exit(EXIT_FAILURE);
+	}
+
+	/* ensure args is a tuple of numbers */
+	Py_ssize_t tuplen = PyTuple_Size(user_data);
+
+	if (tuplen != (count - 1))
+	{
+		PyErr_SetString(PyExc_RuntimeError, "integral: args' size must be equal to "
+											"the number of extra arguments of the "
+											"integrand.\n");
+		Py_Exit(EXIT_FAILURE);
+	}
+
+	Py_ssize_t i;
+
+	for (i = 0; i < tuplen; i++)
+	{
+		if (!PyNumber_Check(PyTuple_GetItem(user_data, i)))
+		{
+			PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple of numbers\n");
+			Py_Exit(EXIT_FAILURE);
+		}
+	}
+
+	/* user_data is ok. Now creates a tuple with the callable args */
+	/**
+	 * The first argument of f is a xparray. So it's size is 1 + tuplen.
+	 */
+	PyObject *f_args;
+
+	f_args = PyTuple_New(1 + tuplen);
+
+	for (i = 1; i <= tuplen; i++)
+	{
+		PyTuple_SetItem(f_args, i, PyTuple_GetItem(user_data, i-1));
+	}
+
+	return f_args;
 }
 
 /*****************************************************************************
@@ -796,9 +905,10 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	/*integral arguments*/
 	double a;
 	double b;
-	unsigned points = 3;
+	PyObject *user_data = NULL;
+	int points = 3;
 	double tolerance = 1e-9;
-	unsigned remaining_it = 10;
+	int remaining_it = 10;
 	/*values to be returned*/
 	double error = 0;
 	double result;
@@ -806,11 +916,11 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	PyObject *ret_integral;
 	PyObject *ret_error;
 
-	static char *kwlist[] = {"f", "a", "b", "points", "tolerance", "depth", NULL};
+	static char *kwlist[] = {"f", "a", "b", "args", "points", "tolerance", "depth", NULL};
 
 	/* parse the input tuple with keywords */
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Odd|$IdI", kwlist, &int_cb_callable, &a, &b, &points, &tolerance, &remaining_it))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Odd|$OIdI", kwlist, &int_cb_callable, &a, &b, &user_data, &points, &tolerance, &remaining_it))
 	{
 		return NULL;
 	}
@@ -822,8 +932,12 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 		return NULL;
 	}
 
+	PyObject *f_args = check_args(user_data);
+
 	/* Calls the integral function */
-	result = integral(int_callback,a,b,points,tolerance,remaining_it,&error);
+	result = integral(int_callback,f_args,a,b,points,tolerance,remaining_it,&error);
+
+	Py_XDECREF(f_args);
 
 	ret_integral = Py_BuildValue("d", result);
 	ret_error = Py_BuildValue("d", error);
