@@ -896,7 +896,10 @@ static PyObject *check_args(PyObject *user_data)
 
 	for (i = 1; i <= tuplen; i++)
 	{
-		PyTuple_SetItem(f_args, i, PyTuple_GetItem(user_data, i-1));
+		/* PyTuple_GetItem borrows the reference of user_data[i-1] */
+		/* PyTuple_SetItem steals the reference of data */
+		PyObject *data = PyNumber_Float(PyTuple_GetItem(user_data, i-1));
+		PyTuple_SetItem(f_args, i, data);
 	}
 
 	return f_args;

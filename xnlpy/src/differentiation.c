@@ -28,8 +28,17 @@ name will appear in the acknowledgments (README.md).
  *
  * Evaluate the first derivative of the function at x
  */
-static double xnl_diff(double (*f)(double), double x, double h, int iterations)
+static double xnl_diff(double (*f)(xparrayObject *, PyObject *), PyObject *f_args, double x, double h, int iterations)
 {
+	xparrayObject *arg_array = NULL;
+
+	arg_array = PyXParray_New(1, 1);
+
+	/* Set the first element of the tuple f_args to be the array argument (x) */
+	/* Insert a referente to arg_array at the position 0 */
+	if (f_args)
+		PyTuple_SetItem(f_args, 0, (PyObject *) arg_array); /* steals the reference of arg_array */
+
 	int i, j;
 	double retval;
 	double **Rdiff = malloc(iterations * sizeof(double));
@@ -56,7 +65,14 @@ static double xnl_diff(double (*f)(double), double x, double h, int iterations)
 	/*Richardson Extrapolation*/
 	for (i = 0; i < iterations; i++)
 	{
-		Rdiff[i][0] = (f(x + h) - f(x - h)) / (2 * h); /*Central Divided Differentiation*/
+		/* Set function + side */
+		arg_array->data[0][0] = x+h;
+		double f_plus = f(arg_array, f_args);
+		/* Set function - side */
+		arg_array->data[0][0] = x-h;
+		double f_minus = f(arg_array, f_args);
+
+		Rdiff[i][0] = (f_plus - f_minus) / (2 * h); /*Central Divided Differentiation*/
 		for (j = 1; j <= i; j++)
 		{
 			Rdiff[i][j] = (pow(4,j)*Rdiff[i][j-1] - Rdiff[i-1][j-1]) / (pow(4,j) - 1);
@@ -74,58 +90,166 @@ static double xnl_diff(double (*f)(double), double x, double h, int iterations)
 
 	free(Rdiff);
 
+	if (!f_args)
+		Py_XDECREF(arg_array);
+
 	return retval;
 }
 
 /*Top level function*/
-static double diff(double (*f)(double), double x, double h, int iterations)
+static double diff(double (*f)(xparrayObject *, PyObject *), PyObject *f_args, double x, double h, int iterations)
 {
-	/*Check if the input iterations is correct*/
-	if (iterations <= 0)
+	/* Handles error of args parameter */	
+	if (PyErr_Occurred())
 	{
-		printf("The number of iterations must be positive.\n");
-		exit(EXIT_FAILURE);
+		return 0; /* just returning anything */
 	}
 
-	return xnl_diff(f, x, h, iterations);
+	/*Checks if the input iterations is correct*/
+	if (iterations <= 0)
+	{
+		/* Set the error flag */
+		PyErr_SetString(PyExc_TypeError, "The number of iterations must be positive.");
+		return 0; /* just returning anything */
+	}
+
+	return xnl_diff(f, f_args, x, h, iterations);
 }
 
 /**********************************************
 * Python interface
 ***********************************************/
 
-static PyObject *diff_cb_callable;
+static PyObject *diff_cb_callable = NULL;
 
-/*Implementation of double (*func)(double)*/
+/*Implementation of double (*func)(xparrayObject, PyObject *)*/
 
-static double diff_callback(double callback)
+static double diff_callback(xparrayObject *arg_array, PyObject *f_args)
 {
 	PyObject *retval;
 	double result; /*returned value*/
 
-	PyObject *value = Py_BuildValue("d", callback);
-	PyObject *arglist = PyTuple_New(1);
-
-	PyTuple_SetItem(arglist, 0, value); /*steals the reference of value*/
-
-	/*call the python function/object saved below*/
-	retval = PyObject_CallObject(diff_cb_callable, arglist);
-
-	/*convert the returned object to a double, if possible*/
-	if (retval && PyFloat_Check(retval))
+	/*calls the python function/object saved below*/
+	if (!f_args)
 	{
-		result = PyFloat_AsDouble(retval);
+		retval = PyObject_CallFunctionObjArgs(diff_cb_callable, (PyObject *) arg_array, NULL);
 	}
 	else
 	{
+		retval = PyObject_CallObject(diff_cb_callable, f_args);
+	}
+
+	/*converts the returned object to a xparray, if possible*/
+	if (retval && !PyXParray_Check(retval))
+	{
+		xparrayObject *ret_array = (xparrayObject *) retval;
+
+		/* Not vectorized yet */
+		result = ret_array->data[0][0];
+	}
+	else
+	{
+		/* sets the error flag */
 		PyErr_SetString(PyExc_TypeError, "Callable object: bad behavior");
-		return -1; /* Error. You must propagate this.*/
+		return 0; /* Error. You must propagate this.*/
 	}
 
 	Py_XDECREF(retval);
-	Py_DECREF(arglist);
 
 	return result;
+}
+
+/**
+ * Check if the args provided by the user are ok.
+ */
+static PyObject *check_args(PyObject *user_data)
+{
+	/**
+	 * Verifies if user_data must be used. This is the case 
+	 * when the function have more than one argument.
+	 *
+	 * To count the number of the callable arguments, refer to 
+	 * https://stackoverflow.com/questions/1117164/how-to-find-the-number-of-parameters-to-a-python-function-from-c
+	 */
+	unsigned count = 0;
+	PyObject *fc = PyObject_GetAttrString(diff_cb_callable, "__code__");
+	if (fc)
+	{
+		PyObject *ac = PyObject_GetAttrString(fc, "co_argcount");
+		if (ac)
+		{
+			count = PyLong_AsLong(ac);
+			Py_DECREF(ac);
+		}
+		Py_DECREF(fc);
+	}
+
+	if (count == 1 && user_data)
+	{
+		PyErr_SetString(PyExc_TypeError, 
+						"diff: args not available for this function. "
+						"It must have more than one argument.");
+		return NULL;
+	}
+
+	if (count > 1 && !user_data)
+	{
+		PyErr_SetString(PyExc_TypeError, 
+						"diff: invalid number of arguments. The function "
+						"appears to have more than one argument, so you must "
+						"use \"args\" to pass the other arguments to it.");
+		return NULL;
+	}
+
+	if (!user_data)
+		return NULL;
+
+	/* ensure the parameter args is a tuple */
+	if (!PyTuple_Check(user_data))
+	{
+		PyErr_SetString(PyExc_TypeError, "diff: args must be a tuple");
+		return NULL;
+	}
+
+	/* ensure args is a tuple of numbers */
+	Py_ssize_t tuplen = PyTuple_Size(user_data);
+
+	if (tuplen != (count - 1))
+	{
+		PyErr_SetString(PyExc_RuntimeError, "diff: args' size must be equal to "
+											"the number of extra arguments of the "
+											"function.");
+		return NULL;
+	}
+
+	Py_ssize_t i;
+
+	for (i = 0; i < tuplen; i++)
+	{
+		if (!PyNumber_Check(PyTuple_GetItem(user_data, i)))
+		{
+			PyErr_SetString(PyExc_TypeError, "diff: args must be a tuple of numbers");
+			return NULL;
+		}
+	}
+
+	/* user_data is ok. Now creates a tuple with the callable args */
+	/**
+	 * The first argument of f is a double. So it's size is 1 + tuplen.
+	 */
+	PyObject *f_args;
+
+	f_args = PyTuple_New(1 + tuplen);
+
+	for (i = 1; i <= tuplen; i++)
+	{
+		/* PyTuple_GetItem borrows the reference of user_data[i-1] */
+		/* PyTuple_SetItem steals the reference of data */
+		PyObject *data = PyNumber_Float(PyTuple_GetItem(user_data, i-1));
+		PyTuple_SetItem(f_args, i, data);
+	}
+
+	return f_args;
 }
 
 /* function to be called externally */
@@ -133,29 +257,47 @@ PyObject *PyXP_Diff(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	/*arguments*/
 	double x;
+	PyObject *user_data = NULL;
 	double h = 0.01;
 	int iterations = 5;
 	/*values to be returned*/
 	double result;
 
-	static char *kwlist[] = {"f", "x", "step", "iterations", NULL};
+	static char *kwlist[] = {"f", "x", "args", "step", "iterations", NULL};
 
 	/* parse the input tuple with keywords */
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Od|$dI", kwlist, &diff_cb_callable, &x, &h, &iterations))
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Od|$OdI", kwlist, &diff_cb_callable, &x, &user_data, &h, &iterations))
 	{
+		PyErr_SetString(PyExc_TypeError, "diff: failed to parse arguments");
 		return NULL;
 	}
 
 	/* ensure the first parameter is a callable */
 	if (!PyCallable_Check(diff_cb_callable))
 	{
-		PyErr_SetString(PyExc_TypeError, "diff: a callable is required\n");
+		PyErr_SetString(PyExc_TypeError, "diff: a callable is required");
 		return NULL;
 	}
 
-	/* Call the diff function */
-	result = diff(diff_callback,x,h,iterations);
+	PyObject *f_args = check_args(user_data);
 
+	/* Calls the diff function */
+	result = diff(diff_callback,f_args,x,h,iterations);
+
+	Py_XDECREF(f_args);
+
+	/* Error occurred when working with diff.
+	 * The only possibility is error due to a bad 
+	 * behavior of the callable object. Just returns 
+	 * NULL to indicate to python that an error occurred 
+	 * without closing the interpreter.
+	 */ 
+	if (PyErr_Occurred())
+	{
+		return NULL;
+	}
+
+	/* Everything ok */
 	return Py_BuildValue("d", result);
 }
