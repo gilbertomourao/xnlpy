@@ -470,8 +470,8 @@ static double Adaptive_Quad(void (*f)(xparrayObject *, PyObject *, double *, int
 	double retvalL = 0, retvalR = 0;
 	double left, right, int_error;
 
-	/* Checks if there is remaining iterations */
-	if (!remaining_it)
+	/* Checks if there is remaining iterations or if an error occurred*/
+	if (!remaining_it || PyErr_Occurred())
 	{
 	    *error = XNL_NAN;
 
@@ -686,7 +686,7 @@ static double xnl_integral(void (*f)(xparrayObject *, PyObject *, double *, int,
     free(vec);
 
     /* Check if the quadrature worked */
-    if (src_isnan(retval))
+    if (src_isnan(retval) && !PyErr_Occurred())
     {
         printf("WARNING: In xnl_integral. Numerical integration failed. Possibly because the integral is divergent.\n");
     }
@@ -716,28 +716,34 @@ static double integral(void (*f)(xparrayObject *, PyObject *, double *, int, dou
 	char error_msg[128] = "\0";
 	int error_flag = 0;
 
+	/* Handles error of args parameter */	
+	if (PyErr_Occurred())
+	{
+		return 0; /* just returning anything */
+	}
+
 	if (points <= 0)
 	{
-		strcat(error_msg,"ERROR: In integral. The number of points must be a natural number.\n");
+		strcat(error_msg,"The number of points must be a natural number. ");
 		error_flag = 1;
 	}
 
 	if (tolerance < 0)
 	{
-		strcat(error_msg,"ERROR: In integral. The tolerance can't be a negative number.\n");
+		strcat(error_msg,"The tolerance can't be a negative number. ");
 		error_flag = 1;
 	}
 
 	if (depth <= 0)
 	{
-		strcat(error_msg,"ERROR: In integral. The depth must be a positive integer.\n");
+		strcat(error_msg,"The depth must be a positive integer. ");
 		error_flag = 1;
 	}
 
 	if (error_flag)
 	{
-		puts(error_msg);
-		exit(EXIT_FAILURE);
+		PyErr_SetString(PyExc_TypeError, error_msg); /* This will set error flag */
+		return 0; /* just returning anything */
 	}
 
 	return xnl_integral(f, f_args, a, b, points, tolerance, depth, error);
@@ -799,8 +805,8 @@ static void int_callback(xparrayObject *arg_array,
 	}
 	else 
 	{
-		PyErr_SetString(PyExc_TypeError, "Callable object int: bad behavior");
-		Py_Exit(EXIT_FAILURE);
+		/* this will set the error flag */
+		PyErr_SetString(PyExc_RuntimeError, "Callable object int: bad behavior");
 	}
 
 	Py_XDECREF(ret_val);
@@ -835,8 +841,8 @@ static PyObject *check_args(PyObject *user_data)
 	{
 		PyErr_SetString(PyExc_TypeError, 
 						"integral: args not available for this integrand. "
-						"It must have more than one argument.\n");
-		Py_Exit(EXIT_FAILURE);
+						"It must have more than one argument.");
+		return NULL;
 	}
 
 	if (count > 1 && !user_data)
@@ -844,8 +850,8 @@ static PyObject *check_args(PyObject *user_data)
 		PyErr_SetString(PyExc_TypeError, 
 						"integral: invalid number of arguments. The integrand "
 						"appears to have more than one argument, so you must "
-						"use \"args\" to pass the other arguments to it.\n");
-		Py_Exit(EXIT_FAILURE);
+						"use \"args\" to pass the other arguments to it.");
+		return NULL;
 	}
 
 	if (!user_data)
@@ -854,8 +860,8 @@ static PyObject *check_args(PyObject *user_data)
 	/* ensure the parameter args is a tuple */
 	if (!PyTuple_Check(user_data))
 	{
-		PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple\n");
-		Py_Exit(EXIT_FAILURE);
+		PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple");
+		return NULL;
 	}
 
 	/* ensure args is a tuple of numbers */
@@ -865,8 +871,8 @@ static PyObject *check_args(PyObject *user_data)
 	{
 		PyErr_SetString(PyExc_RuntimeError, "integral: args' size must be equal to "
 											"the number of extra arguments of the "
-											"integrand.\n");
-		Py_Exit(EXIT_FAILURE);
+											"integrand.");
+		return NULL;
 	}
 
 	Py_ssize_t i;
@@ -875,8 +881,8 @@ static PyObject *check_args(PyObject *user_data)
 	{
 		if (!PyNumber_Check(PyTuple_GetItem(user_data, i)))
 		{
-			PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple of numbers\n");
-			Py_Exit(EXIT_FAILURE);
+			PyErr_SetString(PyExc_TypeError, "integral: args must be a tuple of numbers");
+			return NULL;
 		}
 	}
 
@@ -914,9 +920,6 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	/*values to be returned*/
 	double error = 0;
 	double result;
-	PyObject *ret_tuple = PyTuple_New(2); 
-	PyObject *ret_integral;
-	PyObject *ret_error;
 
 	static char *kwlist[] = {"f", "a", "b", "args", "points", "tolerance", "depth", NULL};
 
@@ -924,13 +927,14 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Odd|$OIdI", kwlist, &int_cb_callable, &a, &b, &user_data, &points, &tolerance, &remaining_it))
 	{
+		PyErr_SetString(PyExc_TypeError, "integral: failed to parse arguments");
 		return NULL;
 	}
 
 	/* ensure the first parameter is a callable */
 	if (!PyCallable_Check(int_cb_callable))
 	{
-		PyErr_SetString(PyExc_TypeError, "integral: a callable is required\n");
+		PyErr_SetString(PyExc_TypeError, "integral: a callable is required");
 		return NULL;
 	}
 
@@ -940,6 +944,23 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	result = integral(int_callback,f_args,a,b,points,tolerance,remaining_it,&error);
 
 	Py_XDECREF(f_args);
+
+	/* Error occurred when working with integral.
+	 * The only possibility is error due to a bad 
+	 * behavior of the callable object. Just returns 
+	 * NULL to indicate to python that an error occurred 
+	 * without closing the interpreter.
+	 */ 
+	if (PyErr_Occurred())
+	{
+		return NULL;
+	}
+
+	/* Everything ok, then returns the tuple (result, error) */
+
+	PyObject *ret_tuple = PyTuple_New(2); 
+	PyObject *ret_integral;
+	PyObject *ret_error;
 
 	ret_integral = Py_BuildValue("d", result);
 	ret_error = Py_BuildValue("d", error);
