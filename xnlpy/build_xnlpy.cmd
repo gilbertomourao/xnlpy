@@ -20,6 +20,7 @@ echo ---------------------------------------------------------------------
 echo.
 
 if exist build (
+	echo Removing old build...
 	rmdir /q /s build
 )
 python setup.py build --compiler=mingw32
@@ -54,8 +55,6 @@ copy build\lib.win-amd64-3.8\xnlpy* "%python_path%\xnlpy"
 rem cd ../..
 echo Moving __init__.py...
 copy __init__.py "%python_path%\xnlpy"
-
-cd "%python_path%\xnlpy"
 
 echo.
 echo ---------------------------------------------------------------------
