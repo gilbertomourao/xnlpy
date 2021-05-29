@@ -309,6 +309,33 @@ static double operator(double A, double B, const char *op)
 	if (!strcmp(op, "abs"))
 		return fabs(A);
 
+	if (!strcmp(op, "<"))
+		return A < B;
+
+	if (!strcmp(op, "<="))
+		return A <= B;
+
+	if (!strcmp(op, "=="))
+		return A == B;
+
+	if (!strcmp(op, "!="))
+		return A != B;
+
+	if (!strcmp(op, ">"))
+		return A > B;
+
+	if (!strcmp(op, ">="))
+		return A >= B;
+
+	if (!strcmp(op, "!"))
+		return !A;
+
+	if (!strcmp(op, "&&"))
+		return A && B;
+
+	if (!strcmp(op, "||"))
+		return A || B;
+
 	return 0;
 }
 
@@ -500,6 +527,24 @@ xparray_abs(PyObject *A)
 }
 
 static PyObject *
+xparray_inv(PyObject *A)
+{
+	return xparray_operator(A, NULL, "!");
+}
+
+static PyObject *
+xparray_and(PyObject *A, PyObject *B)
+{
+	return xparray_operator(A, B, "&&");
+}
+
+static PyObject *
+xparray_or(PyObject *A, PyObject *B)
+{
+	return xparray_operator(A, B, "||");
+}
+
+static PyObject *
 xparray_floordiv(PyObject *A, PyObject *B)
 {
 	return xparray_operator(A, B, "//");
@@ -602,12 +647,12 @@ static PyNumberMethods xparray_as_number =
     .nb_positive = (unaryfunc) xparray_pos, 					/* unaryfunc nb_positive; */
     .nb_absolute = (unaryfunc) xparray_abs, 					/* unaryfunc nb_absolute; */
     0, 					/* inquiry nb_bool; */
-    0,                  /* unaryfunc nb_invert; */
+    .nb_invert = (unaryfunc) xparray_inv,                  /* unaryfunc nb_invert; */
     0,                  /* binaryfunc nb_lshift; */
     0,                  /* binaryfunc nb_rshift; */
-    0,                  /* binaryfunc nb_and; */
+    .nb_and = (binaryfunc) xparray_and,                  /* binaryfunc nb_and; */
     0,                  /* binaryfunc nb_xor; */
-    0,                  /* binaryfunc nb_or; */
+    .nb_or = (binaryfunc) xparray_or,                  /* binaryfunc nb_or; */
     0,        			/* unaryfunc nb_int; */
     0,         			/* void *nb_reserved;  the slot formerly known as nb_long */
     0,        			/* unaryfunc nb_float; */
@@ -1373,6 +1418,30 @@ error:
 	return NULL;
 }
 
+static PyObject *
+xparray_richcompare(PyObject *A, PyObject *B, int cmp_op)
+{
+	switch (cmp_op)
+	{
+		case Py_LT:
+			return xparray_operator(A, B, "<");
+		case Py_LE:
+			return xparray_operator(A, B, "<=");
+		case Py_EQ:
+			return xparray_operator(A, B, "==");
+		case Py_NE:
+			return xparray_operator(A, B, "!=");
+		case Py_GT:
+			return xparray_operator(A, B, ">");
+		case Py_GE:
+			return xparray_operator(A, B, ">=");
+		default:
+			return NULL;
+	}
+
+	return NULL;
+}
+
 /**
  * 
  */
@@ -1393,5 +1462,6 @@ PyTypeObject xparrayType =
 	.tp_methods = xparray_methods,
 	.tp_as_number = &xparray_as_number,
 	.tp_as_mapping = &xparray_as_mapping,
-	.tp_repr = (reprfunc) xparray_repr
+	.tp_repr = (reprfunc) xparray_repr, 
+	.tp_richcompare = (richcmpfunc) xparray_richcompare
 };
