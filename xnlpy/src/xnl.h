@@ -62,6 +62,7 @@ xparrayObject *PyXP_Ones(PyObject *, PyObject *);
 xparrayObject *PyXP_Eye(PyObject *, PyObject *);
 xparrayObject *PyXP_Transpose(PyObject *, PyObject *);
 xparrayObject *PyXP_GaussElimination(PyObject *, PyObject *, PyObject *);
+xparrayObject *PyXP_Arange(PyObject *, PyObject *);
 
 /*Nonlinear equations*/
 PyObject *PyXP_Fsolve(PyObject *, PyObject *, PyObject *);

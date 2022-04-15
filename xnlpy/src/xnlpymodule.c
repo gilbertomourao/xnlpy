@@ -49,7 +49,7 @@ static PyMethodDef xnl_methods[] =
 	{"eye", (PyCFunction) PyXP_Eye, METH_VARARGS, "Identity matrix creation"},
 	{"transpose", (PyCFunction) PyXP_Transpose, METH_VARARGS, "Array transpose"},
 	{"GaussElimination", (PyCFunction) PyXP_GaussElimination, METH_VARARGS | METH_KEYWORDS, "Gauss Elimination"},
-	
+	{"arange", (PyCFunction) PyXP_Arange, METH_VARARGS, "Range array creation"},
 
 	{"fsolve", (PyCFunction) PyXP_Fsolve, METH_VARARGS | METH_KEYWORDS, "Numerical root finder for nonlinear function"},
 	

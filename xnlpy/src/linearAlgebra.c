@@ -251,3 +251,55 @@ xparrayObject *PyXP_Transpose(PyObject *self, PyObject *args)
 
 	return array_Atr;
 }
+
+xparrayObject *PyXP_Arange(PyObject *self, PyObject *args)
+{
+	int rows = 1;
+	double begin, end, step;
+	/*cols is to be determined*/
+	if (!PyArg_ParseTuple(args, "ddd", &begin, &end, &step))
+	{
+		return NULL;
+	}
+
+	int cols = (end - begin)/step + 1; /*arithmetic progression*/
+
+	PyObject *argList = PyTuple_New(rows);
+
+	int i;
+	double val = 0;
+	Py_ssize_t j, ListSize = cols;
+	for (i = 0; i < rows;i++)
+	{
+		PyObject *temp = PyList_New(ListSize);
+
+		for (j = 0; j < ListSize; j++)
+		{
+			PyObject *number = Py_BuildValue("d", begin + val);
+
+			if (PyList_SetItem(temp, j, number) == -1) /*steals the reference of zero*/
+			{
+				return NULL;
+			}
+
+			val += step;
+		}
+
+		PyTuple_SetItem(argList, i, temp); /*steals the reference of temp*/
+	}
+
+	/*call the array object*/
+	xparrayObject *array = (xparrayObject *)PyObject_CallObject((PyObject *) &xparrayType, argList);
+
+	Py_DECREF(argList);
+
+	if (array == NULL)
+	{
+		/*Will print the messages from xparray*/
+		return NULL;
+	}
+
+	/*Success on the creation, then return*/
+
+	return array;
+}

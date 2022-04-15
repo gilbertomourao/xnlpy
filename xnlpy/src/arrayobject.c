@@ -223,9 +223,60 @@ xparray_print(xparrayObject *self, PyObject *args)
 	return Py_BuildValue("");
 }
 
+/**
+ * tolist method
+ *
+ * Transforms the xparray into a list. If it is a 
+ * 2D array, then the output will be a 2D list. 
+ * If it is a 1D array, then the output will be 
+ * a simples 1D list.
+ */
+static PyObject *
+xparray_tolist(xparrayObject *self, PyObject *args)
+{
+	/* check if there is arguments */
+	if (!PyArg_ParseTuple(args,"",NULL))
+	{
+		return NULL;
+	}
+
+	PyObject *List;
+	int i, j;
+
+	if (self->rows == 1)
+	{
+		List = PyList_New(self->cols);
+
+		for (i = 0; i < self->cols; i++)
+		{
+			PyObject *List_item = Py_BuildValue("d", self->data[0][i]); /* creates a reference to List_item*/
+			PyList_SetItem(List, i, List_item); /* steals the reference of List_item*/
+		}
+	}
+	else
+	{
+		List = PyList_New(self->rows);
+
+		for (i = 0; i < self->rows; i++)
+		{
+			/*Creates a new list*/
+			PyObject *List_row_i = PyList_New(self->cols);
+			for (j = 0; j < self->cols; j++)
+			{
+				PyObject *List_item = Py_BuildValue("d", self->data[i][j]); /* creates a reference to List_item*/
+				PyList_SetItem(List_row_i, j, List_item); /* steals the reference of List_item*/
+			}
+			PyList_SetItem(List, i, List_row_i); /* steals the reference of List_row_i*/
+		}
+	}
+
+	return List;
+}
+
 static PyMethodDef xparray_methods[] = 
 {
 	{"print", (PyCFunction) xparray_print, METH_VARARGS, "Print the array"},
+	{"tolist", (PyCFunction) xparray_tolist, METH_VARARGS, "Transforms the array into a list"},
 
 	{NULL} /*Sentinel*/
 };
@@ -707,7 +758,7 @@ static PyObject *indexerr = NULL;
  * valid_index()
  * 
  * To check if it is a valid index or not.
- * It follows the same implementation off listobject.c (see source code on github)
+ * It follows the same implementation of listobject.c (see source code on github)
  */
 static inline int 
 valid_index(Py_ssize_t i, Py_ssize_t limit)

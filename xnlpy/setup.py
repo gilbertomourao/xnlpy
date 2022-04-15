@@ -8,7 +8,7 @@ module1 = Extension(
 	# define_macros = [('PY_SSIZE_T_CLEAN', None)],
 	# it's not necessary to put the Python lib here, because it's already on the PATH
 	sources = c_files,
-	extra_compile_args = ["-O3"],
+	extra_compile_args = ['-O3','-funroll-loops', '-march=native', '-mfpmath=sse'],
 	)
 
 setup(
