@@ -48,6 +48,8 @@ if __name__ == '__main__':
 	ln_10 = xp.log(10)
 	f = (2*lambertw(ln_10/(2*a)*10**(b/(2*a)))/ln_10 - b/a)**-2
 
+	print(f)
+
 	g = 9.8 # m²/s
 
 	h = f*(L/DI)*V**2/(2*g)

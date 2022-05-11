@@ -1,7 +1,10 @@
 from distutils.core import setup, Extension
 import glob
+import pathlib
 
-c_files = [file for file in glob.glob("src/*.c")]
+c_files = [file for file in glob.glob("core/*.c")]
+here = pathlib.Path(__file__).parent.resolve()
+long_description = (here / "../README.md").read_text(encoding="utf-8")
 
 module1 = Extension(
 	'xnlpy', # name
@@ -14,11 +17,13 @@ module1 = Extension(
 setup(
 	name = 'xnlpy',
 	version = '1.0',
+	license='MIT',
 	description = 'XNL library for python!',
 	author = 'Gilberto Jose Guimaraes de Sousa Mourao',
 	author_email = 'gilbertojos.mourao@gmail.com',
 	url = 'https://github.com/gilbertomourao/xnlpy',
 	platforms = 'Windows 10',
-	long_description = 'XNL is a C library that contains some numerical algorithms.',
-	ext_modules = [module1]
+	long_description = long_description,
+	ext_modules = [module1],
+	include_package_data=True
 	);

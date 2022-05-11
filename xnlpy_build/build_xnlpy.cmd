@@ -55,9 +55,12 @@ copy build\lib.win-amd64-3.8\xnlpy* "%python_path%\xnlpy"
 rem cd ../..
 echo Moving __init__.py...
 copy __init__.py "%python_path%\xnlpy"
+copy build\lib.win-amd64-3.8\xnlpy* ..\src\xnlpy
 
 echo.
 echo ---------------------------------------------------------------------
 echo Done.
 
 chcp %cp%>nul
+
+pause
