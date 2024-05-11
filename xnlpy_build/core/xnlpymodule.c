@@ -56,6 +56,8 @@ static PyMethodDef xnl_methods[] =
 	
 	{"diff", (PyCFunction) PyXP_Diff, METH_VARARGS | METH_KEYWORDS, "Numerical differentiation"},
 	{"integral", (PyCFunction) PyXP_Integral, METH_VARARGS | METH_KEYWORDS, "Numerical integration"},
+
+	{"lambertw", (PyCFunction) PyXP_LambertW, METH_VARARGS, "Principal branch of Lambert W function"},
 	
 	{NULL, NULL, 0, NULL} /*Sentinel*/
 };

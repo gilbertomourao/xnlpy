@@ -22,7 +22,7 @@ setup(
 	author = 'Gilberto Jose Guimaraes de Sousa Mourao',
 	author_email = 'gilbertojos.mourao@gmail.com',
 	url = 'https://github.com/gilbertomourao/xnlpy',
-	platforms = 'Windows 10',
+	platforms = 'Windows 10, Ubuntu 22.04',
 	long_description = long_description,
 	ext_modules = [module1],
 	include_package_data=True

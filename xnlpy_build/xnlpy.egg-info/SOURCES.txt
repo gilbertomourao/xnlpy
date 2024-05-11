@@ -1,0 +1,13 @@
+setup.py
+core/arrayobject.c
+core/differentiation.c
+core/gausselimination.c
+core/integration.c
+core/linearAlgebra.c
+core/math.c
+core/root_finding.c
+core/xnlpymodule.c
+xnlpy.egg-info/PKG-INFO
+xnlpy.egg-info/SOURCES.txt
+xnlpy.egg-info/dependency_links.txt
+xnlpy.egg-info/top_level.txt

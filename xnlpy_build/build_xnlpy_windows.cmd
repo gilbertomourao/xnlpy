@@ -51,11 +51,14 @@ rem copying data
 echo Moving files to the Python directory...
 rem cd %build_dir%\build\lib.win32-3.8
 echo Moving the compiled module...
-copy build\lib.win-amd64-3.8\xnlpy* "%python_path%\xnlpy"
+for /r build %%i in (*.pyd) do copy "%%i" "%python_path%\xnlpy"
 rem cd ../..
 echo Moving __init__.py...
 copy __init__.py "%python_path%\xnlpy"
-copy build\lib.win-amd64-3.8\xnlpy* ..\src\xnlpy
+echo Moving pyd file to xnlpy pack...
+for /r build %%i in (*.pyd) do copy "%%i" ..\xnlpy\src\xnlpy
+echo Moving __init__ file to xnlpy pack...
+copy __init__.py ..\xnlpy\src\xnlpy
 
 echo.
 echo ---------------------------------------------------------------------

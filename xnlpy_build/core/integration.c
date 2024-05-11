@@ -46,7 +46,7 @@ static double sum(double *vec, int vec_size)
 static double inner_prod(double *vec1, double *vec2, int vec_size)
 {
 	double prod = 0;
-	unsigned i;
+	int i;
 
 	for (i = 0;i < vec_size;i++)
 	{
@@ -70,7 +70,7 @@ static void cumprod(double value, double *vec, unsigned begin, unsigned end)
 
 static void reverse(double *vec, int vec_size)
 {
-	unsigned i;
+	int i;
 	double aux;
 
 	for (i = 0;i < vec_size / 2; i++)
@@ -776,7 +776,7 @@ static void int_callback(xparrayObject *arg_array,
 						 double c1, 
 						 double c2)
 {
-	unsigned i;
+	int i;
     for (i = 0; i < points; i++)
 	{
 		arg_array->data[0][i] = c1 * roots[i] + c2;
@@ -972,4 +972,115 @@ PyObject *PyXP_Integral(PyObject *self, PyObject *args, PyObject *kwargs)
 	PyTuple_SetItem(ret_tuple, 1, ret_error); /*steals the reference of ret_error*/
 
 	return ret_tuple;
+}
+
+/*****************************************************************************
+ * 
+ * 						Functions defined by integral
+ * 
+ *****************************************************************************
+ */
+
+/**********************************************
+* Lambert W function (only principal branche)
+***********************************************/
+
+static void lambertw_callback(xparrayObject *arg_array,
+						  PyObject *f_args, 
+						  double *vec, 
+						  int points, 
+						  double *roots, 
+						  double c1, 
+						  double c2)
+{
+	/**
+	 * In this case, the lambertw already have a C defined function. Therefore, arg_array 
+	 * will not be "populated". The double argument t have the function that arg_array have 
+	 * when the callback is a python defined function. 
+	 * Well, I hope this make this function gain some optimization. 
+	 */
+	int i;
+	double t;
+	/* The second item (index = 1) of the f_args tuple is the extra argument, which type is double */
+	double x = PyFloat_AsDouble(PyTuple_GetItem(f_args, 1));
+	/**
+	 * Here, I will not check for errors, because inside the principal function, there is already 
+	 * code that do this. So it's pointless to do the same thing again multiple times.
+	 */
+
+	for (i = 0; i < points; i++)
+	{
+		t = c1 * roots[i] + c2;
+		vec[i] = log(1 + x * sin(t)/t * exp(t / tan(t)));
+	}
+}
+
+PyObject *PyXP_LambertW(PyObject *self, PyObject *args)
+{
+	/*integral arguments*/
+	double input_val = 0;
+	int points = 3;
+	double tolerance = 1e-15;
+	int remaining_it = 30;
+	/*values to be returned*/
+	double error = 0; /* i don't see why someone would need to return this. */
+	double result = 0;
+
+	/* parse the input tuple with keywords */
+
+	if (!PyArg_ParseTuple(args, "d", &input_val))
+	{
+		PyErr_SetString(PyExc_TypeError, "lambertw: failed to parse arguments. You must provide a real number (double).");
+		return NULL;
+	}
+
+	/* Checks it the argument is valid */
+	/* Lambert W function on principal branche domain is defined for x > -1/e */
+	if (input_val <= -exp(-1))
+	{
+		PyErr_SetString(PyExc_ValueError, "lambertw: failed to parse arguments. The input argument must be greater than -1/e.");
+		return NULL;
+	}
+
+	/* Creates the f_args argument to pass to integral function */
+
+	/**
+	 * The first argument of f is a xparray. So it's size is 1 + tuplen.
+	 * In this case, tuplen = 1.
+	 */
+	PyObject *f_args;
+	Py_ssize_t tuplen = 1;
+	int i;
+
+	f_args = PyTuple_New(1 + tuplen); /* tuplen = 1 means that it only have one extra argument */
+
+	for (i = 1; i <= tuplen; i++)
+	{
+		/* PyFloat_FromDouble returns a new reference to data */
+		/* PyTuple_SetItem steals the reference of data */
+		PyObject *data = PyFloat_FromDouble(input_val);
+		PyTuple_SetItem(f_args, i, data);
+	}
+
+	/* Uses the approximation given by  ISTVÁN MEZÖ */
+	/* https://arxiv.org/pdf/2012.02480 */
+
+	result = 1 / XNL_PI * integral(lambertw_callback, f_args, 0, XNL_PI, points, tolerance, remaining_it, &error);
+
+	Py_XDECREF(f_args);
+
+	/* Error occurred when working with integral.
+	 * The only possibility is error due to a bad 
+	 * behavior of the callable object. Just returns 
+	 * NULL to indicate to python that an error occurred 
+	 * without closing the interpreter.
+	 */ 
+	if (PyErr_Occurred())
+	{
+		return NULL;
+	}
+
+	/* Everything ok, then returns the value of lambertw function */
+
+	return Py_BuildValue("d", result);
 }

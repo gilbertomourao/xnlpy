@@ -56,7 +56,7 @@ typedef struct xparray
 	Py_ssize_t index_count;
 } xparrayObject;
 
-PyTypeObject xparrayType;
+extern PyTypeObject xparrayType;
 
 #define PyXParray_Check(obj) (strcmp(obj->ob_type->tp_name, "xnlpy.array"))
 

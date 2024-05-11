@@ -71,4 +71,7 @@ PyObject *PyXP_Fsolve(PyObject *, PyObject *, PyObject *);
 PyObject *PyXP_Diff(PyObject *, PyObject *, PyObject *);
 PyObject *PyXP_Integral(PyObject *, PyObject *, PyObject *);
 
+/*Special functions*/
+PyObject *PyXP_LambertW(PyObject *, PyObject *);
+
 #endif /*XNLPY_H*/
