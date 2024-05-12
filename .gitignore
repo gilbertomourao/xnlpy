@@ -1,4 +1,6 @@
 **/*.ipynb_checkpoints/
 **/build/
 **/dist/
-xnlpy/
+xnlpy/publish.cmd
+**/*.egg-info/
+

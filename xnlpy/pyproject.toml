@@ -1,0 +1,60 @@
+# See: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
+[build-system]
+requires = [ # just the requirements
+	"setuptools>=42",
+	"wheel", 
+	"twine"
+]
+build-backend = "setuptools.build_meta" # backend used
+
+[project]
+name = "xnlpy"
+version = "0.0.2.3" # be careful to not repeat the version when doing updates
+dependencies = [] # the package doesn't have any dependencie yet
+requires-python = ">=3.8"
+authors = [
+	{name = "Gilberto José Guimarães de Sousa Mourão", email = "gilbertojos.mourao@gmail.com"}
+]
+maintainers = [
+	{name = "Gilberto José Guimarães de Sousa Mourão", email = "gilbertojos.mourao@gmail.com"}
+]
+description = "Biblioteca para realização de cálculos numéricos"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+keywords = ["xnlpy", "calculus", "numerical"]
+classifiers = [
+	"Programming Language :: Python :: 3", # just compiled xnlpy using python 3
+	"License :: OSI Approved :: MIT License",
+	"Operating System :: Microsoft :: Windows", # Since I'm using .pyd, it'll probably run only on windows.
+]
+
+[project.urls]
+Homepage = "https://github.com/gilbertomourao/xnlpy"
+#Documentation = ""
+Repository = "https://github.com/gilbertomourao/xnlpy"
+Issues = "https://github.com/gilbertomourao/xnlpy/issues"
+#Changelog = ""
+
+[tool.setuptools]
+#package-dir = {"xnlpy" = "src"} # Here, I have decided to call the package xnlpy and src is the directory where it exists
+package-dir = {"xnlpy" = "src/xnlpy"} # Src contains all the packages needed (in this case only xnlpy). There's no need to create a mother package called xnlpy
+# This will prevent the user from calling xnlpy as xnlpy.xnlpy inside python code
+# In version 0.0.2.2, I was trying to publish the package with the packages list empty
+# Well, 0.0.2.2 was a failure, because the xnlpy folder must be created inside site-packages. It's not a subdirectory.
+# In version 0.0.2.3, I was trying to publish looking directly into src/xnlpy, not just src
+packages = [
+	#"xnlpy.xnlpy", # xnlpy stands for the package name I created using package_dir and xnlpy.xnlpy is the xnlpy directory inside src folder, referenced by my package xnlpy
+	"xnlpy" # Creates the folder xnlpy inside site-packages.
+]
+include-package-data = true # Automatically includes any data files inside the package directory that are specified by MANIFEST.in (all .pyd files, in this case)
+# OLD COMMENTS FOLLOWING
+# Note: When you work with package_name.folder, the root directory referenced by package_name must have the 
+# folder already created and the folder must have the __init__.py file. In this case, it have both __init__.py file 
+# and .pyd file, which contains the compiled code of the entire module.
+# END OF OLD COMMENTS
+
+# [project.optional-dependencies]
+# [project.scripts]
+# [project.gui-scripts]
+# [project.entry-points."spam.magical"]
